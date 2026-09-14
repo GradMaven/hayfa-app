@@ -75,6 +75,32 @@ export function passwordResetEmail(params: { name: string; resetUrl: string }): 
   return { subject, html, text };
 }
 
+export function verifyEmailAddressEmail(params: { name: string; verifyUrl: string }): RenderedEmail {
+  const subject = "Verify your Hafya email address";
+
+  const html = baseLayout(`
+    <p style="margin:0 0 12px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="margin:0 0 12px 0;">Confirm this is your email address to finish setting up your Hafya account. This link expires in <strong>24 hours</strong>.</p>
+    ${button(params.verifyUrl, "Verify email address")}
+    <p style="margin:16px 0 0 0;color:${MUTED_COLOR};font-size:12px;">
+      If the button doesn't work, copy and paste this link:<br>
+      <a href="${params.verifyUrl}" style="color:${BRAND_COLOR};word-break:break-all;">${params.verifyUrl}</a>
+    </p>
+    <p style="margin:20px 0 0 0;color:${MUTED_COLOR};font-size:13px;">
+      If you didn't create a Hafya account, you can safely ignore this email.
+    </p>
+  `);
+
+  const text =
+    `Hi ${params.name},\n\n` +
+    `Confirm this is your email address to finish setting up your Hafya account. This link expires in 24 hours:\n\n` +
+    `${params.verifyUrl}\n\n` +
+    `If you didn't create a Hafya account, you can safely ignore this email.\n\n` +
+    `— Hafya`;
+
+  return { subject, html, text };
+}
+
 export function passwordChangedEmail(params: { name: string }): RenderedEmail {
   const subject = "Your Hafya password was changed";
 

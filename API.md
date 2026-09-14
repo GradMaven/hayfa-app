@@ -26,6 +26,8 @@ POST   /api/v1/auth/mfa/verify                          (completes an MFA-pendin
 POST   /api/v1/auth/mfa/enroll/start | enroll/confirm
 GET    /api/v1/auth/mfa/status
 POST   /api/v1/auth/mfa/disable | backup-codes/regenerate
+POST   /api/v1/auth/verify-email/resend                 (authenticated — request a new link)
+POST   /api/v1/auth/verify-email/confirm                 (public — token proves mailbox access)
 GET    /api/v1/patients/me
 POST   /api/v1/patients/me                 (create profile)
 PATCH  /api/v1/patients/me                 (update profile)

@@ -8,11 +8,13 @@ import { NAV_ITEMS } from "@/lib/nav";
 import { cn, initials } from "@/lib/utils";
 import { Logo } from "@/components/brand/logo";
 import { api } from "@/lib/api-client";
+import { EmailVerificationBanner } from "./email-verification-banner";
 
 export interface ShellUser {
   name: string;
   role: string;
   email: string | null;
+  emailVerified: boolean;
 }
 
 export function AppShell({ user, children }: { user: ShellUser; children: ReactNode }) {
@@ -21,7 +23,10 @@ export function AppShell({ user, children }: { user: ShellUser; children: ReactN
       <DesktopSidebar user={user} />
       <div className="flex flex-1 flex-col min-w-0">
         <TopBar user={user} />
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8 max-w-6xl w-full mx-auto">{children}</main>
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
+          {!user.emailVerified && <EmailVerificationBanner email={user.email} />}
+          {children}
+        </main>
       </div>
       <MobileBottomNav />
     </div>

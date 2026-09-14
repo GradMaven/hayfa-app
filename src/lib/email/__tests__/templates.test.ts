@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { passwordResetEmail, passwordChangedEmail, notificationEmail } from "../templates";
+import { passwordResetEmail, passwordChangedEmail, notificationEmail, verifyEmailAddressEmail } from "../templates";
 
 describe("passwordResetEmail", () => {
   it("includes the reset URL in both html and text bodies", () => {
@@ -36,6 +36,30 @@ describe("passwordChangedEmail", () => {
   it("mentions that other sessions were signed out", () => {
     const { text } = passwordChangedEmail({ name: "Amina" });
     expect(text.toLowerCase()).toContain("signed out");
+  });
+});
+
+describe("verifyEmailAddressEmail", () => {
+  it("includes the verify URL in both html and text bodies", () => {
+    const url = "https://hafya.example/verify-email?token=abc123";
+    const { html, text } = verifyEmailAddressEmail({ name: "Amina Otieno", verifyUrl: url });
+    expect(html).toContain(url);
+    expect(text).toContain(url);
+  });
+
+  it("states the 24-hour expiry", () => {
+    const { text } = verifyEmailAddressEmail({ name: "Amina", verifyUrl: "https://x" });
+    expect(text.toLowerCase()).toContain("24 hours");
+  });
+
+  it("escapes HTML in the name", () => {
+    const { html } = verifyEmailAddressEmail({ name: "<script>alert(1)</script>", verifyUrl: "https://x" });
+    expect(html).not.toContain("<script>");
+  });
+
+  it("reassures a recipient who didn't sign up that nothing else happens", () => {
+    const { text } = verifyEmailAddressEmail({ name: "Amina", verifyUrl: "https://x" });
+    expect(text.toLowerCase()).toContain("didn't create");
   });
 });
 

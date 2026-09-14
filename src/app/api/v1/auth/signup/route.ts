@@ -8,6 +8,7 @@ import { setSessionCookie } from "@/lib/auth/cookies";
 import { getClientIp, getUserAgent } from "@/lib/request-context";
 import { writeAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendVerificationEmail } from "@/lib/auth/email-verification";
 
 export async function POST(request: NextRequest) {
   return withApiErrors(async () => {
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
       ipAddress: getClientIp(request),
       userAgent: getUserAgent(request),
     });
+
+    await sendVerificationEmail(user);
 
     return apiSuccess(
       { id: user.id, name: user.name, email: user.email, role: user.role },

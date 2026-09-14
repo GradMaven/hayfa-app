@@ -21,3 +21,7 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1),
   newPassword: z.string().min(10, "Password must be at least 10 characters."),
 });
+
+export const verifyEmailConfirmSchema = z.object({
+  token: z.string().min(1),
+});

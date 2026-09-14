@@ -35,6 +35,7 @@ export const getCurrentUser = cache(async () => {
     providerProfileId: providerProfile?.id ?? null,
     providerOrganizationId: providerProfile?.organizationId ?? null,
     providerVerified: providerProfile?.verificationStatus === "VERIFIED",
+    emailVerified: result.user.emailVerifiedAt !== null,
   };
 });
 

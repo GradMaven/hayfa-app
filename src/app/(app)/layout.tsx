@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user.patientProfileId) redirect("/onboarding");
 
   return (
-    <AppShell user={{ name: user.name, role: user.role, email: user.email }}>
+    <AppShell user={{ name: user.name, role: user.role, email: user.email, emailVerified: user.emailVerified }}>
       {children}
     </AppShell>
   );
