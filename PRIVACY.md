@@ -11,7 +11,7 @@ The patient owns their health record. Hafya's job is to make that ownership real
 - **Nothing is shared by default.** A provider or caregiver sees only what you explicitly grant, for exactly the scopes and duration you choose (`/sharing`).
 - **You can see who looked at your records, and when** (`/privacy` access history) — every access, allowed or denied, is logged.
 - **You can export your full record at any time**, in a structured format, without asking anyone's permission.
-- **AI features never see more than they need**, are off by default, and no health data reaches a real AI vendor in the current build — the only "AI" running today is a local mock, on purpose, until a real vendor integration is deliberately reviewed and wired in.
+- **AI features never see more than they need**, are off by default (`NEXT_PUBLIC_ENABLE_AI=false`), and run on a local mock — no data reaches any AI vendor — unless an operator explicitly configures a real one (`AI_PROVIDER=anthropic` + a real key). That path exists and is verified working, but stays opt-in on purpose; see [`docs/ai-architecture.md`](docs/ai-architecture.md) for exactly what data a real vendor call sends.
 - **Emergency access is opt-in and logged**, never a standing backdoor — see [`docs/security-architecture.md`](docs/security-architecture.md).
 
 ## What this build is not (yet)

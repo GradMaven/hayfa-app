@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Sparkles, MessageCircleQuestion, ShieldOff } from "lucide-react";
-import { api } from "@/lib/api-client";
+import { api, ApiClientError } from "@/lib/api-client";
 import { PageHeader } from "@/components/health/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,14 @@ function InsightCard({
       </CardHeader>
       <CardContent>
         {!result ? (
-          <Button variant="outline" onClick={() => mutation.mutate()} loading={mutation.isPending}>Generate</Button>
+          <div className="space-y-3">
+            <Button variant="outline" onClick={() => mutation.mutate()} loading={mutation.isPending}>Generate</Button>
+            {mutation.isError && (
+              <Alert tone="danger">
+                {mutation.error instanceof ApiClientError ? mutation.error.message : "Something went wrong. Please try again."}
+              </Alert>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             {result.safetyFlag === "URGENT_CARE_RECOMMENDED" && (

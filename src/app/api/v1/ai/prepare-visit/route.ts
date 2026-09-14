@@ -22,9 +22,14 @@ export async function POST(request: NextRequest) {
       take: 10,
     });
 
-    const response = await getAIProvider().prepareForVisit(
-      recentEvents.map((e) => ({ type: e.type, id: e.id, label: e.title }))
-    );
+    let response;
+    try {
+      response = await getAIProvider().prepareForVisit(
+        recentEvents.map((e) => ({ type: e.type, id: e.id, label: e.title }))
+      );
+    } catch {
+      throw new ApiException("INTERNAL_ERROR", "This isn't available right now. Please try again shortly.");
+    }
     return apiSuccess(response);
   });
 }

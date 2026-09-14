@@ -30,12 +30,17 @@ export async function POST(request: NextRequest) {
     });
 
     const extracted = document.ocrExtractedData as { rawText?: string } | null;
-    const response = await getAIProvider().summarizeDocument({
-      type: "Document",
-      id: document.id,
-      label: document.title,
-      extractedText: extracted?.rawText ?? "",
-    });
+    let response;
+    try {
+      response = await getAIProvider().summarizeDocument({
+        type: "Document",
+        id: document.id,
+        label: document.title,
+        extractedText: extracted?.rawText ?? "",
+      });
+    } catch {
+      throw new ApiException("INTERNAL_ERROR", "This document summary is temporarily unavailable. Please try again shortly.");
+    }
     return apiSuccess(response);
   });
 }

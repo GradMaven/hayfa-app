@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Trash2, ScanText, Check, Pencil, X as XIcon } from "lucide-react";
-import { api } from "@/lib/api-client";
+import { Download, Trash2, ScanText, Check, Pencil, X as XIcon, Sparkles, ShieldOff } from "lucide-react";
+import { api, ApiClientError } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
 import { formatDate } from "@/lib/utils";
 import { featureFlags } from "@/lib/feature-flags";
 
@@ -33,6 +34,12 @@ interface OcrResult {
   documentType: string | null;
   fields: OcrField[];
   overallConfidence: number;
+}
+
+interface AISummaryResponse {
+  text: string;
+  disclaimer: string;
+  safetyFlag: "NONE" | "SUGGEST_PROFESSIONAL_REVIEW" | "URGENT_CARE_RECOMMENDED";
 }
 
 const VERIFICATION_LABEL: Record<string, { label: string; tone: "neutral" | "success" | "info" | "warning" }> = {
@@ -75,6 +82,12 @@ export function DocumentCard({ doc }: { doc: DocumentRecord }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
 
+  const [summary, setSummary] = useState<AISummaryResponse | null>(null);
+  const summarizeMutation = useMutation({
+    mutationFn: () => api.post<AISummaryResponse>("/api/v1/ai/summarize-document", { documentId: doc.id }),
+    onSuccess: setSummary,
+  });
+
   async function handleDownload() {
     const { url } = await api.get<{ url: string }>(`/api/v1/documents/${doc.id}/download`);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -107,6 +120,11 @@ export function DocumentCard({ doc }: { doc: DocumentRecord }) {
               <ScanText className="size-4" /> Review draft
             </Button>
           )}
+          {featureFlags.ai && (doc.ocrStatus === "COMPLETED" || doc.ocrStatus === "CONFIRMED") && !summary && (
+            <Button size="sm" variant="outline" onClick={() => summarizeMutation.mutate()} loading={summarizeMutation.isPending}>
+              <Sparkles className="size-4" /> Summarize
+            </Button>
+          )}
           <button onClick={handleDownload} className="text-muted-2 hover:text-foreground p-2" aria-label={`Download ${doc.title}`}>
             <Download className="size-4" />
           </button>
@@ -115,6 +133,27 @@ export function DocumentCard({ doc }: { doc: DocumentRecord }) {
           </button>
         </div>
       </div>
+
+      {summarizeMutation.isError && (
+        <Alert tone="danger" className="mt-4">
+          {summarizeMutation.error instanceof ApiClientError ? summarizeMutation.error.message : "This document summary is temporarily unavailable."}
+        </Alert>
+      )}
+
+      {summary && (
+        <div className="mt-4 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 p-4">
+          {summary.safetyFlag === "URGENT_CARE_RECOMMENDED" && (
+            <Alert tone="danger" title="Consider seeking care soon" className="mb-3">
+              Something in this document may need prompt attention. This is not a diagnosis — please contact a
+              healthcare provider.
+            </Alert>
+          )}
+          <p className="text-sm text-foreground leading-relaxed">{summary.text}</p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-2 mt-2">
+            <ShieldOff className="size-3.5" /> AI-generated · {summary.disclaimer}
+          </div>
+        </div>
+      )}
 
       {showOcr && ocrResult && (
         <div className="mt-4 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 p-4">

@@ -14,11 +14,13 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | `STORAGE_BUCKET` | Yes | Bucket for document uploads |
 | `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | Yes | Credentials for the bucket above |
 | `STORAGE_FORCE_PATH_STYLE` | No (default `false`) | Set `true` for MinIO; real AWS S3 should leave this unset/`false` |
-| `ENABLE_AI` | No (default `false`) | Gates the `/insights` UI and every `/api/v1/ai/*` route. The mock provider runs regardless of the underlying vendor — see `docs/ai-architecture.md`. |
-| `ENABLE_OCR` | No (default `true`) | Gates document-intelligence extraction |
-| `ENABLE_WEARABLES` / `ENABLE_SMS` / `ENABLE_USSD` / `ENABLE_ORGANIZATIONS` / `ENABLE_BILLING` | No (default `false`) | Reserved for unbuilt features — flipping these does not currently unlock functionality; they exist so future feature work has a flag to land behind (§82) |
-| `ENABLE_PROVIDER_PORTAL` | No (default `true`) | Reserved for the same reason; the current provider experience (`/portal`) is not gated by this flag |
-| `AI_PROVIDER` / `AI_API_KEY` | No | Not read by any code path yet — no real AI vendor is wired in this phase |
+| `NEXT_PUBLIC_ENABLE_AI` | No (default `false`) | Gates the `/insights` UI, the AI buttons on `/timeline`/`/health`/`/documents`, and every `/api/v1/ai/*` route. `NEXT_PUBLIC_`-prefixed and read via a static reference (`src/lib/feature-flags.ts`) because these flags decide what several Client Components render, not just server-route behavior — a plain `ENABLE_AI` (or a dynamic `process.env[name]` lookup) silently evaluates to `false` in the browser regardless of the real value, which was a real bug here until fixed. None of these flags are secrets. |
+| `NEXT_PUBLIC_ENABLE_OCR` | No (default `true`) | Gates document-intelligence extraction, client and server |
+| `NEXT_PUBLIC_ENABLE_WEARABLES` / `..._SMS` / `..._USSD` / `..._ORGANIZATIONS` / `..._BILLING` | No (default `false`) | Reserved for unbuilt features — flipping these does not currently unlock functionality; they exist so future feature work has a flag to land behind (§82) |
+| `NEXT_PUBLIC_ENABLE_PROVIDER_PORTAL` | No (default `true`) | Reserved for the same reason; the current provider experience (`/portal`) is not gated by this flag |
+| `AI_PROVIDER` | No (default `mock`) | `mock` (or unset) uses the built-in deterministic mock — no network call, nothing leaves the process. `anthropic` sends requests to the Anthropic API (Claude) via `AI_API_KEY` below — see `docs/ai-architecture.md` before ever pointing this at real patient data. |
+| `AI_API_KEY` | Yes if `AI_PROVIDER=anthropic` | Your Anthropic API key. Only read server-side, never sent to the browser. |
+| `AI_MODEL` | No (default `claude-haiku-4-5-20251001`) | Which Claude model answers AI-feature requests |
 | `EMAIL_FROM` | No | The `From` address/display name on every outgoing email (password reset, password-changed confirmation, notifications) |
 | `EMAIL_PROVIDER` | No (default `console`) | `console` logs emails to server stdout (zero setup). `smtp` sends real email via `SMTP_*` below — see `src/lib/email/index.ts`. |
 | `SMTP_HOST` | Yes if `EMAIL_PROVIDER=smtp` | SMTP server hostname. Local dev: `localhost` (Mailpit — see below). Production: your vendor's SMTP host (Amazon SES, SendGrid, Postmark, Mailgun, Gmail, etc.) |

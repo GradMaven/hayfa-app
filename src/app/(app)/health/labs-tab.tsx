@@ -132,13 +132,20 @@ function ExplainButton({ labResultId }: { labResultId: string }) {
   }
 
   return (
-    <button
-      onClick={() => mutation.mutate()}
-      disabled={mutation.isPending}
-      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
-    >
-      <Sparkles className="size-3.5" /> {mutation.isPending ? "Explaining…" : "Explain this"}
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+      >
+        <Sparkles className="size-3.5" /> {mutation.isPending ? "Explaining…" : "Explain this"}
+      </button>
+      {mutation.isError && (
+        <p className="text-xs text-danger max-w-xs text-right">
+          {mutation.error instanceof ApiClientError ? mutation.error.message : "This explanation is temporarily unavailable."}
+        </p>
+      )}
+    </div>
   );
 }
 

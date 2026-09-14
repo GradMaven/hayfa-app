@@ -17,7 +17,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | Consent & Permissions, Data Sharing, Emergency Access | Built |
 | Notifications | Built — in-app + real email (SMTP, any vendor); SMS/USSD/push not wired |
 | Audit Logs | Built |
-| AI Health Insights | Built (mocked provider, real-vendor swap documented, off by default) |
+| AI Health Insights | Built — mock provider by default; a real vendor (Anthropic/Claude) is wired and verified against the live API, off by default |
 | Provider Portal | Minimal placeholder only (`/portal`) — see [discovery-report.md](discovery-report.md) |
 | Admin Portal, Organizations, Subscription/Billing, Analytics, full Integrations, API Platform | Not built — schema/interfaces exist where noted in their respective docs |
 

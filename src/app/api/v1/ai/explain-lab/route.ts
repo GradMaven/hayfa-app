@@ -26,12 +26,17 @@ export async function POST(request: NextRequest) {
       resourceId: lab.id,
     });
 
-    const response = await getAIProvider().explainLabResult({
-      type: "LabResult",
-      id: lab.id,
-      label: lab.testName,
-      resultText: `${lab.resultValue}${lab.unit ?? ""} (reference: ${lab.referenceRange ?? "not provided"})`,
-    });
+    let response;
+    try {
+      response = await getAIProvider().explainLabResult({
+        type: "LabResult",
+        id: lab.id,
+        label: lab.testName,
+        resultText: `${lab.resultValue}${lab.unit ?? ""} (reference: ${lab.referenceRange ?? "not provided"})`,
+      });
+    } catch {
+      throw new ApiException("INTERNAL_ERROR", "This explanation is temporarily unavailable. Please try again shortly.");
+    }
     return apiSuccess(response);
   });
 }

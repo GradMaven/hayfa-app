@@ -56,7 +56,7 @@ Underneath that surface: RBAC scaffold (patient/caregiver/provider/admin roles),
 - SMS/USSD delivery — `NotificationProvider` interface exists, only in-app/email channel wired (§39–40)
 - FHIR mapping layer (§34–35) — canonical model is FHIR-shaped where practical, no live FHIR I/O yet
 - Webhooks (§49)
-- Real AI/OCR vendor calls (§18, §51) — interfaces + mock implementations only
+- Real OCR vendor calls (§18) — interface + mock implementation only. (A real AI vendor — Anthropic/Claude — was wired in a later session; see [ai-architecture.md](ai-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)
 
 This split is a scope decision, not an oversight — building every module shallowly would leave nothing production-ready; building the golden path deeply gives you something real to evaluate and extend.
 

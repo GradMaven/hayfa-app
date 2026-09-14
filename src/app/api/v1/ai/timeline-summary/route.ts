@@ -29,10 +29,18 @@ export async function POST(request: NextRequest) {
     });
 
     const rangeLabel = `${from.toLocaleDateString()} – ${to.toLocaleDateString()}`;
-    const response = await getAIProvider().summarizeTimeline(
-      events.map((e) => ({ type: e.type, id: e.id, label: e.title })),
-      rangeLabel
-    );
+
+    // §65: fail safely — a vendor outage or rate limit never surfaces a
+    // stack trace or raw error to the client, just a plain retry-later message.
+    let response;
+    try {
+      response = await getAIProvider().summarizeTimeline(
+        events.map((e) => ({ type: e.type, id: e.id, label: e.title })),
+        rangeLabel
+      );
+    } catch {
+      throw new ApiException("INTERNAL_ERROR", "The health summary is temporarily unavailable. Please try again shortly.");
+    }
     return apiSuccess(response);
   });
 }

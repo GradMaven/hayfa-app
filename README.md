@@ -6,7 +6,7 @@ See [`docs/discovery-report.md`](docs/discovery-report.md) for the full technica
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · SMTP email · custom revocable-session auth with TOTP MFA · Zod + React Hook Form · TanStack Query.
+Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · SMTP email · Anthropic (Claude) AI, mock by default · custom revocable-session auth with TOTP MFA · Zod + React Hook Form · TanStack Query.
 
 ## Getting started
 

@@ -9,7 +9,7 @@ This is a demo/development-phase project with synthetic seed data only — there
 ## The rules this codebase enforces
 
 1. **Authentication is never sufficient for authorization.** Every request that touches a specific patient's data is checked against that patient's actual ownership/consent/caregiver relationship, re-derived from the database on every call (`canAccess()`, [`src/lib/consent/index.ts`](src/lib/consent/index.ts)) — never inferred from role or from a client-supplied ID alone.
-2. **No secret reaches the client bundle.** Database URLs, the session-hashing secret, storage credentials, and any future AI API key are read only in server-only modules (`src/lib/*`, route handlers) — never in a Client Component.
+2. **No secret reaches the client bundle.** Database URLs, the MFA-encryption secret, storage credentials, SMTP credentials, and the AI API key are read only in server-only modules (`src/lib/*`, route handlers) — never in a Client Component. Feature *flags* (`NEXT_PUBLIC_ENABLE_*`) are deliberately the one category of config exposed to the browser — they're on/off switches, not secrets, and several gate what a Client Component renders (see `docs/ai-architecture.md` "A bug this work surfaced and fixed").
 3. **Passwords are bcrypt-hashed (cost 12), sessions are opaque tokens hashed at rest.** No JWT, no plaintext secret ever written to the database.
 4. **Every write is Zod-validated server-side**, even though the same schema also validates client-side — the client check is UX, the server check is the actual boundary.
 5. **Object-level authorization is checked per request**, not cached in a session claim — a revoked consent takes effect on the very next request.
