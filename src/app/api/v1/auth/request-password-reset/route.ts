@@ -5,6 +5,8 @@ import { requestPasswordResetSchema } from "@/lib/validation/auth";
 import { generateOpaqueToken, hashToken } from "@/lib/auth/tokens";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-context";
+import { getEmailProvider } from "@/lib/email";
+import { passwordResetEmail } from "@/lib/email/templates";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Always respond identically whether or not the account exists — this is
     // the one place §13/§91 collide with "helpful UX": being vague here is
     // the correct choice.
-    if (user && user.status === "ACTIVE" && !user.deletedAt) {
+    if (user && user.status === "ACTIVE" && !user.deletedAt && user.email) {
       const rawToken = generateOpaqueToken();
       await db.passwordResetToken.create({
         data: {
@@ -36,8 +38,16 @@ export async function POST(request: NextRequest) {
       });
 
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/reset-password?token=${rawToken}`;
-      if (process.env.EMAIL_PROVIDER === "console") {
-        console.info(`[email:mock] Password reset for ${user.email}: ${resetUrl}`);
+      const { subject, html, text } = passwordResetEmail({ name: user.name, resetUrl });
+
+      try {
+        await getEmailProvider().send({ to: user.email, subject, html, text });
+      } catch (err) {
+        // Never let an email-delivery failure change this endpoint's
+        // response (would reveal account existence via a distinguishable
+        // error) or block the request — log server-side and move on. A
+        // real deployment should alert on this, not surface it to the caller.
+        console.error("[email] failed to send password reset email:", err instanceof Error ? err.message : err);
       }
     }
 

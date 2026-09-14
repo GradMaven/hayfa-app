@@ -6,16 +6,16 @@ See [`docs/discovery-report.md`](docs/discovery-report.md) for the full technica
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · custom revocable-session auth · Zod + React Hook Form · TanStack Query.
+Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · SMTP email · custom revocable-session auth with TOTP MFA · Zod + React Hook Form · TanStack Query.
 
 ## Getting started
 
-Requires Node 20+, Docker (for local Postgres + MinIO).
+Requires Node 20+, Docker (for local Postgres + MinIO + Mailpit).
 
 ```bash
 cp .env.example .env          # generates nothing on its own — see below for a real AUTH_SECRET
 npm install
-docker compose up -d          # starts Postgres (5432) and MinIO (9000/9001)
+docker compose up -d          # starts Postgres (5432), MinIO (9000/9001), Mailpit (1025/8025)
 npm run db:migrate            # applies the schema
 npm run db:seed               # loads synthetic demo data (clearly marked, never real patient data)
 npm run dev
@@ -40,6 +40,8 @@ docker exec hafya-app-minio-1 sh -c \
   "mc alias set local http://localhost:9000 hafya_minio hafya_minio_password && \
    mc mb -p local/hafya-documents-dev && mc anonymous set none local/hafya-documents-dev"
 ```
+
+By default `.env.example` sets `EMAIL_PROVIDER=console` (emails just log to your terminal). To actually see a password-reset email arrive, set `EMAIL_PROVIDER=smtp` (with the default `SMTP_HOST=localhost`/`SMTP_PORT=1025`) and open **http://localhost:8025** — that's Mailpit's inbox, catching every email the app sends locally without delivering anywhere real. Trigger one from "Forgot password?" on the sign-in page.
 
 ## Scripts
 

@@ -15,7 +15,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | Laboratory Results, Medications, Conditions, Allergies, Immunizations, Vitals, Appointments | Built |
 | Chronic Conditions + Care Plans | Built (condition/care-plan CRUD; no clinician-facing care-plan authoring UI yet) |
 | Consent & Permissions, Data Sharing, Emergency Access | Built |
-| Notifications | Built (in-app + console-mock email only) |
+| Notifications | Built — in-app + real email (SMTP, any vendor); SMS/USSD/push not wired |
 | Audit Logs | Built |
 | AI Health Insights | Built (mocked provider, real-vendor swap documented, off by default) |
 | Provider Portal | Minimal placeholder only (`/portal`) — see [discovery-report.md](discovery-report.md) |

@@ -19,8 +19,12 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | `ENABLE_WEARABLES` / `ENABLE_SMS` / `ENABLE_USSD` / `ENABLE_ORGANIZATIONS` / `ENABLE_BILLING` | No (default `false`) | Reserved for unbuilt features — flipping these does not currently unlock functionality; they exist so future feature work has a flag to land behind (§82) |
 | `ENABLE_PROVIDER_PORTAL` | No (default `true`) | Reserved for the same reason; the current provider experience (`/portal`) is not gated by this flag |
 | `AI_PROVIDER` / `AI_API_KEY` | No | Not read by any code path yet — no real AI vendor is wired in this phase |
-| `EMAIL_FROM` | No | Display name/address for the mock email logger |
-| `EMAIL_PROVIDER` | No (default `console`) | Only `console` is implemented (logs to server stdout) — see `src/lib/notifications/index.ts` |
+| `EMAIL_FROM` | No | The `From` address/display name on every outgoing email (password reset, password-changed confirmation, notifications) |
+| `EMAIL_PROVIDER` | No (default `console`) | `console` logs emails to server stdout (zero setup). `smtp` sends real email via `SMTP_*` below — see `src/lib/email/index.ts`. |
+| `SMTP_HOST` | Yes if `EMAIL_PROVIDER=smtp` | SMTP server hostname. Local dev: `localhost` (Mailpit — see below). Production: your vendor's SMTP host (Amazon SES, SendGrid, Postmark, Mailgun, Gmail, etc.) |
+| `SMTP_PORT` | No (default `587`) | `465` implies TLS automatically; use `1025` for local Mailpit |
+| `SMTP_SECURE` | No (default `false`, or `true` when port is `465`) | Force implicit TLS on a nonstandard port |
+| `SMTP_USER` / `SMTP_PASSWORD` | No | Omit both for an unauthenticated local catcher like Mailpit; required for every real vendor |
 | `NEXT_PUBLIC_APP_URL` | Yes | Used to build absolute links (e.g. password-reset URLs). `NEXT_PUBLIC_*` vars ARE sent to the browser — never put a secret in one. |
 | `NODE_ENV` | Set by tooling | Standard Next.js env |
 
@@ -33,6 +37,10 @@ docker exec hafya-app-minio-1 sh -c \
   "mc alias set local http://localhost:9000 hafya_minio hafya_minio_password && \
    mc mb -p local/hafya-documents-dev && mc anonymous set none local/hafya-documents-dev"
 ```
+
+## Local email testing (Mailpit)
+
+`docker compose up -d` also starts Mailpit, a local SMTP catcher. With `EMAIL_PROVIDER=smtp`, `SMTP_HOST=localhost`, `SMTP_PORT=1025` (the `.env.example` defaults), every email the app sends — password reset, password-changed confirmation, in-app notification emails — lands in Mailpit instead of a real inbox. View them at **http://localhost:8025**. Switching to a real vendor in production means changing `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD` only; `src/lib/email/index.ts` doesn't change.
 
 ## Environment separation (§101)
 

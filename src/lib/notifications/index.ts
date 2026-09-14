@@ -1,11 +1,15 @@
 import { db } from "@/lib/db";
 import { featureFlags } from "@/lib/feature-flags";
+import { getEmailProvider } from "@/lib/email";
+import { notificationEmail } from "@/lib/email/templates";
 import type { NotificationType } from "@prisma/client";
 
-// NotificationProvider abstraction (§39–40). Only IN_APP and EMAIL are wired;
-// SMS/USSD/PUSH are modeled in the schema and the interface but routed
-// nowhere until ENABLE_SMS/ENABLE_USSD are turned on and a real provider is
-// plugged in — never send sensitive medical detail over SMS by default (§39).
+// NotificationProvider abstraction (§39–40). IN_APP and EMAIL are wired to a
+// real provider (see lib/email — console in dev, SMTP against any real
+// vendor in production); SMS/USSD/PUSH are modeled in the schema and the
+// interface but routed nowhere until ENABLE_SMS/ENABLE_USSD are turned on
+// and a real provider is plugged in — never send sensitive medical detail
+// over SMS by default (§39).
 
 export interface NotifyParams {
   userId: string;
@@ -31,12 +35,18 @@ export async function notify(params: NotifyParams): Promise<void> {
     },
   });
 
-  if (process.env.EMAIL_PROVIDER === "console") {
-    // Dev-only stand-in for a real email provider (SES/Postmark/etc). Never
-    // put full clinical detail in the notification body itself (§39) —
-    // bodies here are meant to be short pointers ("New lab result available")
-    // and the recipient opens the app to see anything sensitive.
-    console.info(`[email:mock] to user ${params.userId} — ${params.title}: ${params.body}`);
+  // Never put full clinical detail in the notification body itself (§39) —
+  // bodies here are meant to be short pointers ("New lab result available")
+  // and the recipient opens the app to see anything sensitive; that
+  // constraint is enforced by callers of notify(), not by this function.
+  const user = await db.user.findUnique({ where: { id: params.userId }, select: { name: true, email: true } });
+  if (user?.email) {
+    const { subject, html, text } = notificationEmail({ name: user.name, title: params.title, body: params.body });
+    try {
+      await getEmailProvider().send({ to: user.email, subject, html, text });
+    } catch (err) {
+      console.error("[email] failed to send notification email:", err instanceof Error ? err.message : err);
+    }
   }
 
   if (featureFlags.sms) {

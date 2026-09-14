@@ -34,6 +34,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local SMTP catcher — receives every email the app sends without
+  # delivering anywhere real, and shows them in a web UI. Point
+  # EMAIL_PROVIDER=smtp + SMTP_HOST=localhost + SMTP_PORT=1025 at this for
+  # local dev; swap those three vars for a real vendor's SMTP credentials in
+  # production — the app code doesn't change either way.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/livez"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   hafya_postgres_data:
   hafya_minio_data:
