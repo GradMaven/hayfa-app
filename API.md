@@ -40,7 +40,8 @@ DELETE /api/v1/{same}/:id                  (soft delete)
 GET    /api/v1/timeline?type=&search=&from=&to=&cursor=&limit=
 GET    /api/v1/dashboard/summary?patientId=
 
-POST   /api/v1/documents                   (multipart upload)
+POST   /api/v1/documents                   (multipart upload — malware-scanned before anything is stored;
+                                             rejected files never get a Document row)
 GET    /api/v1/documents?patientId=
 GET    /api/v1/documents/:id/download      (short-lived signed URL)
 POST   /api/v1/documents/:id/ocr           (mock extraction, draft only)

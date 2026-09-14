@@ -16,7 +16,8 @@ This is a demo/development-phase project with synthetic seed data only — there
 6. **Admin roles do not bypass patient-data authorization.** No route in this codebase grants elevated roles a shortcut past `canAccess()`.
 7. **Emergency access is scoped, logged, and never silent** — see [`docs/security-architecture.md`](docs/security-architecture.md) "Emergency access is not a backdoor."
 8. **MFA never leaves a half-open session.** A password-correct, MFA-enabled sign-in gets a short-lived challenge cookie, not a session — no `Session` row exists until the second factor is verified. The TOTP secret is encrypted at rest (AES-256-GCM, keyed from `AUTH_SECRET`), not just stored. See [`docs/security-architecture.md`](docs/security-architecture.md) "Multi-factor authentication."
+9. **Every upload is scanned for malware before anything is persisted**, and an unreachable scanner fails the upload closed, never silently "clean." Verified against a real ClamAV daemon with both a clean file and the EICAR test file. See [`docs/security-architecture.md`](docs/security-architecture.md) "Malware scanning on upload."
 
 ## Known gaps (tracked, not hidden)
 
-Malware scanning on document upload is not wired; audit-log append-only-ness is enforced at the application layer only (no DB trigger yet); no automated security test suite (IDOR/XSS/CSRF/rate-limit-bypass) has been run. Full list: [`docs/security-architecture.md`](docs/security-architecture.md) "What's deliberately deferred."
+Audit-log append-only-ness is enforced at the application layer only (no DB trigger yet); no automated security test suite (IDOR/XSS/CSRF/rate-limit-bypass) has been run. Full list: [`docs/security-architecture.md`](docs/security-architecture.md) "What's deliberately deferred."

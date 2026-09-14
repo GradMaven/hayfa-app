@@ -27,6 +27,9 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | `SMTP_PORT` | No (default `587`) | `465` implies TLS automatically; use `1025` for local Mailpit |
 | `SMTP_SECURE` | No (default `false`, or `true` when port is `465`) | Force implicit TLS on a nonstandard port |
 | `SMTP_USER` / `SMTP_PASSWORD` | No | Omit both for an unauthenticated local catcher like Mailpit; required for every real vendor |
+| `MALWARE_SCAN_PROVIDER` | No (default `clamav`) | `clamav` (default) scans every upload against a real ClamAV daemon and **fails the upload closed** if it can't be reached — see `docs/security-architecture.md` "Malware scanning on upload". `none` is an explicit opt-out (e.g. CI) — resulting documents are honestly marked `SKIPPED`, never `CLEAN`. |
+| `CLAMAV_HOST` | Yes if `MALWARE_SCAN_PROVIDER=clamav` | ClamAV daemon hostname. Local dev: `localhost` (the `docker compose up -d` instance). Production: any ClamAV reachable over TCP. |
+| `CLAMAV_PORT` | No (default `3310`) | ClamAV daemon TCP port |
 | `NEXT_PUBLIC_APP_URL` | Yes | Used to build absolute links (e.g. password-reset URLs). `NEXT_PUBLIC_*` vars ARE sent to the browser — never put a secret in one. |
 | `NODE_ENV` | Set by tooling | Standard Next.js env |
 
@@ -43,6 +46,10 @@ docker exec hafya-app-minio-1 sh -c \
 ## Local email testing (Mailpit)
 
 `docker compose up -d` also starts Mailpit, a local SMTP catcher. With `EMAIL_PROVIDER=smtp`, `SMTP_HOST=localhost`, `SMTP_PORT=1025` (the `.env.example` defaults), every email the app sends — password reset, password-changed confirmation, in-app notification emails — lands in Mailpit instead of a real inbox. View them at **http://localhost:8025**. Switching to a real vendor in production means changing `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD` only; `src/lib/email/index.ts` doesn't change.
+
+## Local malware scanning (ClamAV)
+
+`docker compose up -d` also starts a real ClamAV daemon. **First startup downloads current virus definitions and can take several minutes** — uploads fail closed (rejected with a "try again shortly" message, not silently accepted) until it's ready, matching production behavior for a scanner that isn't reachable yet. Check readiness with `docker compose ps clamav` (`healthy`) or `docker compose logs clamav`. Production points the same `CLAMAV_HOST`/`CLAMAV_PORT` at any ClamAV instance reachable over TCP — this container is for local dev only.
 
 ## Environment separation (§101)
 

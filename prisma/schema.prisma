@@ -617,6 +617,16 @@ enum OcrStatus {
   CONFIRMED
 }
 
+// Only CLEAN or SKIPPED are ever persisted — an INFECTED file is rejected
+// before a Document row is created or anything reaches object storage (see
+// docs/security-architecture.md "Malware scanning"). SKIPPED means scanning
+// was explicitly disabled (MALWARE_SCAN_PROVIDER=none) when this was
+// uploaded, not that the file failed a scan.
+enum MalwareScanStatus {
+  CLEAN
+  SKIPPED
+}
+
 model Document {
   id                 String              @id @default(cuid())
   patientId          String
@@ -640,6 +650,8 @@ model Document {
   ocrStatus          OcrStatus           @default(NOT_APPLICABLE)
   ocrExtractedData   Json?
   ocrConfidence      Float?
+  malwareScanStatus  MalwareScanStatus   @default(SKIPPED)
+  malwareScannedAt   DateTime?
   tags               String[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt

@@ -8,6 +8,9 @@ import { documentMetadataSchema, ACCEPTED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_SIZE
 import { getStorageProvider, buildDocumentStorageKey } from "@/lib/storage";
 import { recordHealthEvent } from "@/lib/health-events";
 import { featureFlags } from "@/lib/feature-flags";
+import { getMalwareScanProvider, MalwareScanUnavailableError } from "@/lib/malware-scan";
+import { writeAuditEvent } from "@/lib/audit";
+import { getClientIp, getUserAgent } from "@/lib/request-context";
 
 export async function GET(request: NextRequest) {
   return withApiErrors(async () => {
@@ -32,6 +35,7 @@ export async function GET(request: NextRequest) {
         verificationStatus: true,
         sensitivity: true,
         ocrStatus: true,
+        malwareScanStatus: true,
         tags: true,
       },
     });
@@ -71,6 +75,34 @@ export async function POST(request: NextRequest) {
     });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // §18 pipeline: scan before anything is persisted — an infected file
+    // never reaches object storage or gets a Document row. A scanner that
+    // can't be reached fails the request closed (never silently "clean").
+    let scanOutcome;
+    try {
+      scanOutcome = await getMalwareScanProvider().scan(buffer);
+    } catch (err) {
+      if (err instanceof MalwareScanUnavailableError) {
+        throw new ApiException("INTERNAL_ERROR", "We couldn't check this file for safety right now. Please try again in a moment.");
+      }
+      throw err;
+    }
+
+    if (scanOutcome.status === "INFECTED") {
+      await writeAuditEvent({
+        actorUserId: actor.id,
+        actorLabel: actor.name,
+        action: "DOCUMENT_UPLOAD_REJECTED_MALWARE",
+        resourceType: "Document",
+        patientId,
+        metadata: { fileName: file.name, mimeType: file.type, sizeBytes: file.size, threatName: scanOutcome.threatName },
+        ipAddress: getClientIp(request),
+        userAgent: getUserAgent(request),
+      });
+      throw new ApiException("VALIDATION_ERROR", "This file could not be uploaded because it appears to contain malicious content.");
+    }
+
     const fileHash = createHash("sha256").update(buffer).digest("hex");
     const documentId = randomUUID();
     const storageKey = buildDocumentStorageKey(patientId, documentId, file.name);
@@ -90,6 +122,8 @@ export async function POST(request: NextRequest) {
         source: sourceForActor(actor),
         verificationStatus: verificationForActor(actor),
         ocrStatus: featureFlags.ocr ? "PENDING" : "NOT_APPLICABLE",
+        malwareScanStatus: scanOutcome.status === "CLEAN" ? "CLEAN" : "SKIPPED",
+        malwareScannedAt: scanOutcome.status === "CLEAN" ? new Date() : null,
       },
     });
 

@@ -22,6 +22,7 @@ export interface DocumentRecord {
   source: string;
   verificationStatus: string;
   ocrStatus: "NOT_APPLICABLE" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CONFIRMED";
+  malwareScanStatus: "CLEAN" | "SKIPPED";
   tags: string[];
 }
 
@@ -103,6 +104,11 @@ export function DocumentCard({ doc }: { doc: DocumentRecord }) {
             <p className="font-medium truncate">{doc.title}</p>
             <Badge tone="neutral">{doc.documentType.replace(/_/g, " ").toLowerCase()}</Badge>
             <Badge tone={verification.tone}>{verification.label}</Badge>
+            {doc.malwareScanStatus === "SKIPPED" && (
+              <Badge tone="warning" title="Malware scanning was unavailable or disabled when this was uploaded.">
+                Not scanned
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-2 mt-1">
             {doc.providerName ? `${doc.providerName} · ` : ""}

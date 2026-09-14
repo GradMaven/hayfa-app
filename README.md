@@ -6,20 +6,22 @@ See [`docs/discovery-report.md`](docs/discovery-report.md) for the full technica
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · SMTP email · Anthropic (Claude) AI, mock by default · custom revocable-session auth with TOTP MFA · Zod + React Hook Form · TanStack Query.
+Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · SMTP email · ClamAV malware scanning · Anthropic (Claude) AI, mock by default · custom revocable-session auth with TOTP MFA · Zod + React Hook Form · TanStack Query.
 
 ## Getting started
 
-Requires Node 20+, Docker (for local Postgres + MinIO + Mailpit).
+Requires Node 20+, Docker (for local Postgres + MinIO + Mailpit + ClamAV).
 
 ```bash
 cp .env.example .env          # generates nothing on its own — see below for a real AUTH_SECRET
 npm install
-docker compose up -d          # starts Postgres (5432), MinIO (9000/9001), Mailpit (1025/8025)
+docker compose up -d          # starts Postgres (5432), MinIO (9000/9001), Mailpit (1025/8025), ClamAV (3310)
 npm run db:migrate            # applies the schema
 npm run db:seed               # loads synthetic demo data (clearly marked, never real patient data)
 npm run dev
 ```
+
+**First run only**: ClamAV downloads virus definitions on first startup, which can take a few minutes — document uploads fail closed (a clear "try again shortly" error, never silently accepted) until it reports healthy. Check with `docker compose ps clamav`.
 
 Open http://localhost:3000. Demo logins (password `DemoPass123!`):
 

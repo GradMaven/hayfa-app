@@ -51,6 +51,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local malware scanner (§18 upload pipeline: "Upload → Virus/security
+  # scan → OCR → ..."). Real ClamAV, not a mock — MALWARE_SCAN_PROVIDER=clamav
+  # + CLAMAV_HOST=localhost + CLAMAV_PORT=3310 (the .env.example defaults)
+  # point at this daemon. First startup downloads virus definitions
+  # (freshclam) and can take several minutes — the healthcheck's long
+  # start_period accounts for that; app requests will fail closed (not
+  # silently "clean") until it reports healthy. A production deployment
+  # points the same three env vars at any ClamAV instance reachable over
+  # TCP — this container is for local dev only.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    volumes:
+      - hafya_clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 5m
+
 volumes:
   hafya_postgres_data:
   hafya_minio_data:
+  hafya_clamav_data:

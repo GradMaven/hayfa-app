@@ -7,8 +7,9 @@ No production deployment exists yet for this project — this document describes
 1. **PostgreSQL** (managed or self-hosted) — run `prisma migrate deploy` (not `migrate dev`) against it as part of your deploy pipeline, never by hand against a database holding real data.
 2. **S3-compatible object storage** (real AWS S3, DigitalOcean Spaces, Cloudflare R2, etc.) with `STORAGE_FORCE_PATH_STYLE=false` for real AWS, `true` for most S3-compatible alternatives. The bucket must **not** be public — this app relies entirely on short-lived signed URLs for downloads (§45).
 3. **An SMTP-speaking email vendor** (Amazon SES, SendGrid, Postmark, Mailgun, etc.) — set `EMAIL_PROVIDER=smtp` and the vendor's `SMTP_*` credentials. Without this, `EMAIL_PROVIDER` defaults to `console` and password-reset/notification emails only appear in server logs, never a real inbox. See [`ENVIRONMENT.md`](ENVIRONMENT.md).
-4. **A Node.js host** capable of running `next build && next start`, or a platform that natively runs Next.js (Vercel, etc.). Nothing in this codebase is Vercel-specific.
-5. Every variable in [`ENVIRONMENT.md`](ENVIRONMENT.md), set per-environment — **never share a database or bucket between environments** (§74/§101).
+4. **A reachable ClamAV instance** — unlike the other providers, malware scanning does **not** default to a safe no-op: `MALWARE_SCAN_PROVIDER=clamav` is the default, and every document upload fails closed (rejected, not silently accepted) if `CLAMAV_HOST`/`CLAMAV_PORT` don't point at a running daemon. Run ClamAV as a long-lived service (not the local dev container) and keep its virus definitions updating (`freshclam`) — see [`ENVIRONMENT.md`](ENVIRONMENT.md). Set `MALWARE_SCAN_PROVIDER=none` only as a deliberate, documented choice, never as an accidental default.
+5. **A Node.js host** capable of running `next build && next start`, or a platform that natively runs Next.js (Vercel, etc.). Nothing in this codebase is Vercel-specific.
+6. Every variable in [`ENVIRONMENT.md`](ENVIRONMENT.md), set per-environment — **never share a database or bucket between environments** (§74/§101).
 
 ## Before deploying with real (non-synthetic) patient data
 
