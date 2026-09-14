@@ -12,7 +12,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | User Profiles / Patient Health Record | Built |
 | Health Timeline | Built |
 | Documents + OCR (mocked) + malware scanning (real ClamAV) | Built |
-| Laboratory Results, Medications, Conditions, Allergies, Immunizations, Vitals, Appointments | Built |
+| Laboratory Results, Medications, Conditions, Allergies, Immunizations, Vitals, Appointments | Built — includes a patient-initiated correction workflow (§56) for medications/conditions/labs once a record is provider-verified or not patient-sourced, instead of a silent direct overwrite |
 | Chronic Conditions + Care Plans | Built (condition/care-plan CRUD; no clinician-facing care-plan authoring UI yet) |
 | Consent & Permissions, Data Sharing, Emergency Access | Built |
 | Notifications | Built — in-app + real email (SMTP, any vendor); SMS/USSD/push not wired |

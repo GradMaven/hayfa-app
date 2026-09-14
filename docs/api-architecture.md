@@ -18,6 +18,7 @@ Every endpoint lives under `/api/v1/*`. Success and error responses share one sh
 | `/api/v1/auth` | signup, signin, signout, session, sessions (list/revoke), request-password-reset, reset-password |
 | `/api/v1/patients/me` | profile create/read/update, emergency-access toggle |
 | `/api/v1/{medications,conditions,labs,vitals,allergies,immunizations,appointments,care-plans}` | list/create, `[id]` update/soft-delete |
+| `/api/v1/corrections` | patient-owned: dispute a provider-verified/non-patient-sourced medication, condition, or lab result (list/create; see security-architecture.md) |
 | `/api/v1/timeline` | filtered, scope-aware, cursor-paginated health events |
 | `/api/v1/documents` | upload, list, `[id]` read/delete, `[id]/download` (signed URL), `[id]/ocr`, `[id]/ocr/confirm` |
 | `/api/v1/consents` | patient-owned grant list/create, `[id]/revoke` |
@@ -30,7 +31,7 @@ Every endpoint lives under `/api/v1/*`. Success and error responses share one sh
 | `/api/v1/notifications` | list, mark-read |
 | `/api/v1/portal/overview` | provider/caregiver "who's granted you access" (see below) |
 
-Every one of these (aside from `/auth/*` and the two password-reset routes) sits behind `requireUser()` at minimum, and every patient-scoped one behind `canAccess()` — see [security-architecture.md](security-architecture.md).
+Every one of these (aside from `/auth/*` and the two password-reset routes) sits behind `requireUser()` at minimum, and every patient-scoped one behind `canAccess()` — see [security-architecture.md](security-architecture.md) — **except** `/consents`, `/caregivers`, and `/corrections`, which are direct ownership checks (`actor.patientProfileId === patientId`) rather than `canAccess()`, since granting access or disputing your own record is an owner-only action, not something being "accessed."
 
 ## Why `/api/v1/portal/overview` exists
 

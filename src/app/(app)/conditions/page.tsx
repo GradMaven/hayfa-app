@@ -17,6 +17,7 @@ import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
+import { CorrectionRequestControl, type CorrectionField } from "@/components/health/correction-request";
 
 interface ConditionRecord {
   id: string;
@@ -26,7 +27,39 @@ interface ConditionRecord {
   severity: "MILD" | "MODERATE" | "SEVERE" | null;
   dateDiagnosed: string | null;
   notes: string | null;
+  source: string;
+  verificationStatus: string;
   medications: { id: string; name: string }[];
+}
+
+const CONDITION_CORRECTION_FIELDS: CorrectionField[] = [
+  { key: "name", label: "Condition", type: "text" },
+  { key: "dateDiagnosed", label: "Date diagnosed", type: "date" },
+  {
+    key: "status",
+    label: "Status",
+    type: "select",
+    options: [
+      { value: "ACTIVE", label: "Active" },
+      { value: "MANAGED", label: "Managed" },
+      { value: "RESOLVED", label: "Resolved" },
+    ],
+  },
+  {
+    key: "severity",
+    label: "Severity",
+    type: "select",
+    options: [
+      { value: "MILD", label: "Mild" },
+      { value: "MODERATE", label: "Moderate" },
+      { value: "SEVERE", label: "Severe" },
+    ],
+  },
+  { key: "notes", label: "Notes", type: "textarea" },
+];
+
+function requiresCorrection(record: ConditionRecord): boolean {
+  return record.source !== "PATIENT_ENTERED" || record.verificationStatus === "PROVIDER_VERIFIED";
 }
 
 type FormValues = z.input<typeof conditionSchema>;
@@ -103,6 +136,14 @@ export default function ConditionsPage() {
                     <Badge key={m.id} tone="primary">{m.name}</Badge>
                   ))}
                 </div>
+              )}
+              {requiresCorrection(c) && (
+                <CorrectionRequestControl
+                  resourceType="CONDITION"
+                  resourceId={c.id}
+                  fields={CONDITION_CORRECTION_FIELDS}
+                  invalidateQueryKeys={[["conditions"], ["timeline"]]}
+                />
               )}
             </Card>
           ))}

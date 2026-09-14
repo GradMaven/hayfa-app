@@ -2,30 +2,35 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { apiSuccess, withApiErrors, ApiException } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth/current-user";
-import { authorizePatientAccess } from "@/lib/api/patient-scope";
+import { authorizePatientAccess, assertDirectEditAllowed } from "@/lib/api/patient-scope";
 import { medicationSchema } from "@/lib/validation/clinical";
+import { pickProvidedFields } from "@/lib/validation/partial-update";
 
-async function loadOwnerPatientId(id: string): Promise<string> {
-  const record = await db.medication.findUnique({ where: { id }, select: { patientId: true, deletedAt: true } });
+async function loadOwnerRecord(id: string) {
+  const record = await db.medication.findUnique({
+    where: { id },
+    select: { patientId: true, deletedAt: true, source: true, verificationStatus: true },
+  });
   if (!record || record.deletedAt) throw new ApiException("NOT_FOUND", "Medication not found.");
-  return record.patientId;
+  return record;
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withApiErrors(async () => {
     await requireUser();
     const { id } = await params;
-    const patientId = await loadOwnerPatientId(id);
+    const existing = await loadOwnerRecord(id);
     await authorizePatientAccess(request, {
-      patientId,
+      patientId: existing.patientId,
       scope: "MEDICATIONS",
       action: "UPDATE",
       resourceType: "Medication",
       resourceId: id,
     });
+    assertDirectEditAllowed(existing);
 
     const body = await request.json();
-    const input = medicationSchema.partial().parse(body);
+    const input = pickProvidedFields(medicationSchema.partial().parse(body), body);
     const record = await db.medication.update({ where: { id }, data: input });
     return apiSuccess(record);
   });
@@ -35,9 +40,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   return withApiErrors(async () => {
     await requireUser();
     const { id } = await params;
-    const patientId = await loadOwnerPatientId(id);
+    const existing = await loadOwnerRecord(id);
     await authorizePatientAccess(request, {
-      patientId,
+      patientId: existing.patientId,
       scope: "MEDICATIONS",
       action: "DELETE",
       resourceType: "Medication",

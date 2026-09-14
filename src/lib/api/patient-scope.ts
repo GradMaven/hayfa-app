@@ -3,7 +3,7 @@ import { requireUser, type CurrentUser } from "@/lib/auth/current-user";
 import { canAccess, type DataScope } from "@/lib/consent";
 import { getClientIp, getUserAgent } from "@/lib/request-context";
 import { ApiException } from "@/lib/api-response";
-import type { DataAccessAction } from "@prisma/client";
+import type { DataAccessAction, DataSourceType, VerificationStatus } from "@prisma/client";
 
 // Shared boilerplate for every /api/v1/* route that reads or writes a single
 // patient's clinical data: authenticate, resolve which patient is being
@@ -58,4 +58,22 @@ export function sourceForActor(actor: CurrentUser): "PATIENT_ENTERED" | "PROVIDE
 
 export function verificationForActor(actor: CurrentUser): "UNVERIFIED" | "PROVIDER_VERIFIED" {
   return actor.providerProfileId && actor.providerVerified ? "PROVIDER_VERIFIED" : "UNVERIFIED";
+}
+
+// §56: a record the patient didn't originate, or one a provider has already
+// verified, can't be silently overwritten by a direct PATCH — the patient's
+// own account being compromised or simply mistaken shouldn't be able to
+// quietly rewrite what a clinician asserted. Those records must go through
+// POST /api/v1/corrections instead, which preserves the original value. See
+// docs/security-architecture.md "Data correction workflow".
+export function assertDirectEditAllowed(record: {
+  source: DataSourceType;
+  verificationStatus: VerificationStatus;
+}): void {
+  if (record.source !== "PATIENT_ENTERED" || record.verificationStatus === "PROVIDER_VERIFIED") {
+    throw new ApiException(
+      "CONFLICT",
+      "This record was entered or verified by a provider and can't be edited directly. Submit a correction request instead."
+    );
+  }
 }

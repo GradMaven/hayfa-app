@@ -17,6 +17,7 @@ import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
+import { CorrectionRequestControl, type CorrectionField } from "@/components/health/correction-request";
 
 interface MedicationRecord {
   id: string;
@@ -29,8 +30,22 @@ interface MedicationRecord {
   purpose: string | null;
   status: "ACTIVE" | "COMPLETED" | "DISCONTINUED" | "PAUSED";
   source: string;
+  verificationStatus: string;
   prescriber: { fullName: string } | null;
   relatedCondition: { name: string } | null;
+}
+
+const MEDICATION_CORRECTION_FIELDS: CorrectionField[] = [
+  { key: "name", label: "Medication name", type: "text" },
+  { key: "dose", label: "Dose", type: "text" },
+  { key: "frequency", label: "Frequency", type: "text" },
+  { key: "route", label: "Route", type: "text" },
+  { key: "startDate", label: "Start date", type: "date" },
+  { key: "purpose", label: "Purpose", type: "text" },
+];
+
+function requiresCorrection(record: MedicationRecord): boolean {
+  return record.source !== "PATIENT_ENTERED" || record.verificationStatus === "PROVIDER_VERIFIED";
 }
 
 type FormValues = z.input<typeof medicationSchema>;
@@ -140,6 +155,14 @@ function MedicationGroup({ title, records, onDelete }: { title: string; records:
                   {m.endDate ? ` · Ended ${formatDate(m.endDate)}` : ""}
                   {m.prescriber ? ` · ${m.prescriber.fullName}` : ""}
                 </p>
+                {requiresCorrection(m) && (
+                  <CorrectionRequestControl
+                    resourceType="MEDICATION"
+                    resourceId={m.id}
+                    fields={MEDICATION_CORRECTION_FIELDS}
+                    invalidateQueryKeys={[["medications"], ["timeline"]]}
+                  />
+                )}
               </div>
               <button
                 onClick={() => onDelete(m.id)}

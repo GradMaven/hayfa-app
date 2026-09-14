@@ -34,8 +34,15 @@ PATCH  /api/v1/patients/me                 (update profile)
 
 GET    /api/v1/{medications,conditions,labs,vitals,allergies,immunizations,appointments,care-plans}?patientId=
 POST   /api/v1/{same}                      (create)
-PATCH  /api/v1/{same}/:id                  (update — not on vitals/immunizations, see docs/api-architecture.md)
+PATCH  /api/v1/{same}/:id                  (update — not on vitals/immunizations, see docs/api-architecture.md;
+                                             rejected with 409 on medications/conditions/labs once the record is
+                                             provider-verified or not patient-sourced — see corrections below)
 DELETE /api/v1/{same}/:id                  (soft delete)
+
+POST   /api/v1/corrections                 (dispute a provider-verified/non-patient-sourced medication,
+                                             condition, or lab result — patient-owned action, preserves the
+                                             original value, applies immediately)
+GET    /api/v1/corrections?resourceType=&resourceId= (correction history for one record; ?patientId= for all)
 
 GET    /api/v1/timeline?type=&search=&from=&to=&cursor=&limit=
 GET    /api/v1/dashboard/summary?patientId=

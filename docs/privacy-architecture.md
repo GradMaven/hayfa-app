@@ -38,7 +38,11 @@ AI route handlers (`src/app/api/v1/ai/*`) select only the fields a feature needs
 
 No route places patient-identifying or clinical data in a query string beyond an opaque `patientId`/resource `id` (already an internal cuid, not a name or diagnosis). Search terms on `/timeline` are the one user-typed string that reaches a URL param client-side — this is client-only state, not sent anywhere but this app's own API.
 
+## Data correction, not a silent overwrite (§56)
+
+A patient disputing a provider-verified medication, condition, or lab result doesn't get a plain edit — `POST /api/v1/corrections` requires a reason, preserves the pre-correction value permanently on a `CorrectionRequest` row, and marks the record `PATIENT_CORRECTED` rather than reverting it to looking unverified or untouched. Direct `PATCH` on those same fields is rejected once a record is provider-verified or not patient-sourced, specifically so this path can't be bypassed. See [security-architecture.md](security-architecture.md) "Data correction workflow" and [database-architecture.md](database-architecture.md) for the full mechanism.
+
 ## What's deferred
 
-- Data correction workflow (§56 — a request/reason/corrected-representation flow distinct from a plain edit) is not built; edits today are direct (with `updatedAt` bumped) rather than versioned. This is the clearest gap against the full spec and the first thing to build if this goes further.
+- A provider-facing review queue for correction requests — they currently apply immediately on submission (there's no clinician-facing UI to route them through yet); see [security-architecture.md](security-architecture.md) "Data correction workflow" for the scope reasoning.
 - Formal DPIA content — see [`docs/privacy/dpia.md`](privacy/dpia.md) for the template and what's filled in vs. flagged for legal review.

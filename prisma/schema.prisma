@@ -63,6 +63,7 @@ model User {
   emergencyRequests       EmergencyAccess[]        @relation("EmergencyRequestedBy")
   notifications           Notification[]
   documentsUploaded       Document[]               @relation("DocumentUploadedBy")
+  correctionRequests      CorrectionRequest[]
   subscription            Subscription?
 
   @@index([email])
@@ -180,26 +181,27 @@ model PatientProfile {
   updatedAt              DateTime            @updatedAt
   deletedAt              DateTime?
 
-  encounters        Encounter[]
-  diagnoses         Diagnosis[]
-  conditions        Condition[]
-  medications       Medication[]
-  labTests          LabTest[]
-  labResults        LabResult[]
-  vitals            Vital[]
-  immunizations     Immunization[]
-  procedures        Procedure[]
-  allergies         Allergy[]
-  documents         Document[]
-  appointments      Appointment[]
-  carePlans         CarePlan[]
-  healthEvents      HealthEvent[]
-  consents          Consent[]         @relation("ConsentOwner")
-  caregiverLinks    CaregiverLink[]   @relation("PatientOfCaregiver")
-  emergencyAccesses EmergencyAccess[]
-  dataAccessLogs    DataAccessLog[]   @relation("AccessSubject")
-  auditEvents       AuditEvent[]      @relation("AuditPatient")
-  externalRecords   ExternalRecord[]
+  encounters         Encounter[]
+  diagnoses          Diagnosis[]
+  conditions         Condition[]
+  medications        Medication[]
+  labTests           LabTest[]
+  labResults         LabResult[]
+  vitals             Vital[]
+  immunizations      Immunization[]
+  procedures         Procedure[]
+  allergies          Allergy[]
+  documents          Document[]
+  appointments       Appointment[]
+  carePlans          CarePlan[]
+  healthEvents       HealthEvent[]
+  consents           Consent[]           @relation("ConsentOwner")
+  caregiverLinks     CaregiverLink[]     @relation("PatientOfCaregiver")
+  emergencyAccesses  EmergencyAccess[]
+  dataAccessLogs     DataAccessLog[]     @relation("AccessSubject")
+  auditEvents        AuditEvent[]        @relation("AuditPatient")
+  externalRecords    ExternalRecord[]
+  correctionRequests CorrectionRequest[]
 
   @@index([userId])
 }
@@ -317,6 +319,15 @@ enum VerificationStatus {
   PROVIDER_VERIFIED
   AI_EXTRACTED_UNCONFIRMED
   PATIENT_CONFIRMED
+  // Set when a patient-submitted CorrectionRequest changes a field on a
+  // record that was PROVIDER_VERIFIED (or otherwise not patient-sourced) —
+  // see docs/security-architecture.md "Data correction workflow". Distinct
+  // from PATIENT_CONFIRMED: that means "the patient confirmed an AI draft
+  // as-is"; this means "the patient disputed and changed a value the
+  // original source had asserted," which is a materially different
+  // provenance fact worth its own status rather than silently reverting to
+  // UNVERIFIED or staying PROVIDER_VERIFIED as if nothing happened.
+  PATIENT_CORRECTED
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -867,6 +878,38 @@ model AuditEvent {
   @@index([createdAt])
   @@index([patientId])
   @@index([actorUserId])
+}
+
+// §56: "If a patient identifies an incorrect record, do not simply
+// overwrite the original source record. Create a correction workflow" —
+// this is that workflow. Append-only, like AuditEvent/DataAccessLog: a row
+// is created, never updated or deleted. previousValues is the permanent
+// record of what the source originally asserted — the "original record" the
+// spec says must be maintained — even after the underlying row's fields
+// have been changed to correctedValues. See docs/security-architecture.md
+// "Data correction workflow" for the full request/apply flow and why this
+// phase auto-applies rather than routing through provider review.
+enum CorrectionRequestStatus {
+  APPLIED
+  REJECTED
+}
+
+model CorrectionRequest {
+  id                String                  @id @default(cuid())
+  patientId         String
+  patient           PatientProfile          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  resourceType      String
+  resourceId        String
+  requestedByUserId String
+  requestedBy       User                    @relation(fields: [requestedByUserId], references: [id])
+  reason            String
+  previousValues    Json
+  correctedValues   Json
+  status            CorrectionRequestStatus @default(APPLIED)
+  createdAt         DateTime                @default(now())
+
+  @@index([patientId])
+  @@index([resourceType, resourceId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

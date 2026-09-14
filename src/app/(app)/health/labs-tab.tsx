@@ -17,6 +17,30 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 import { featureFlags } from "@/lib/feature-flags";
+import { CorrectionRequestControl, type CorrectionField } from "@/components/health/correction-request";
+
+const LAB_CORRECTION_FIELDS: CorrectionField[] = [
+  { key: "testName", label: "Test name", type: "text" },
+  { key: "resultValue", label: "Result", type: "text" },
+  { key: "unit", label: "Unit", type: "text" },
+  { key: "referenceRange", label: "Reference range", type: "text" },
+  {
+    key: "flag",
+    label: "Flag",
+    type: "select",
+    options: [
+      { value: "NORMAL", label: "Normal" },
+      { value: "LOW", label: "Low" },
+      { value: "HIGH", label: "High" },
+      { value: "CRITICAL", label: "Critical" },
+    ],
+  },
+  { key: "testDate", label: "Test date", type: "date" },
+];
+
+function requiresCorrection(record: LabResultRecord): boolean {
+  return record.source !== "PATIENT_ENTERED" || record.verificationStatus === "PROVIDER_VERIFIED";
+}
 
 interface LabResultRecord {
   id: string;
@@ -111,6 +135,14 @@ export function LabsTab() {
               </div>
               {results[0].referenceRange && (
                 <p className="text-xs text-muted mt-2">Reference: {results[0].referenceRange}</p>
+              )}
+              {requiresCorrection(results[0]) && (
+                <CorrectionRequestControl
+                  resourceType="LAB_RESULT"
+                  resourceId={results[0].id}
+                  fields={LAB_CORRECTION_FIELDS}
+                  invalidateQueryKeys={[["labs"], ["timeline"]]}
+                />
               )}
             </Card>
           ))}
