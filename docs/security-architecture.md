@@ -31,6 +31,17 @@ Custom, not a third-party auth library — see [discovery-report.md](discovery-r
 - Sign-in and sign-up are rate-limited per IP+email ([`src/lib/rate-limit.ts`](../src/lib/rate-limit.ts) — in-memory, documented as not multi-instance-safe; a shared store is a deploy-time swap, not a code change).
 - Sign-in failure messages are deliberately generic ("Incorrect email or password") — never confirm whether an email is registered. Password-reset requests behave identically whether or not the account exists.
 
+## Multi-factor authentication (§13)
+
+TOTP-based (RFC 6238), compatible with any standard authenticator app — no proprietary push mechanism. See [`src/lib/auth/mfa.ts`](../src/lib/auth/mfa.ts), [`mfa-crypto.ts`](../src/lib/auth/mfa-crypto.ts), [`mfa-challenge.ts`](../src/lib/auth/mfa-challenge.ts), and the routes under [`src/app/api/v1/auth/mfa/`](../src/app/api/v1/auth/mfa/).
+
+- **MFA challenge, not a half-open session.** A password-correct, MFA-enabled sign-in creates an `MfaChallenge` row and a *separate* short-lived cookie (`hafya_mfa_challenge`) — never a `Session` row, never the session cookie. No route that checks for the session cookie can be tricked into treating a pending MFA login as authenticated, because the artifact simply doesn't exist yet. The challenge is single-use (deleted on success), expires in 5 minutes, and locks after 5 failed attempts — enforced server-side (`MfaChallenge.attempts`), not just via the general IP rate limiter.
+- **The TOTP secret is encrypted at rest**, not just hashed — unlike a password, the server must be able to read it back to compute the expected code. AES-256-GCM, keyed from `AUTH_SECRET` ([`mfa-crypto.ts`](../src/lib/auth/mfa-crypto.ts)); a stolen database dump alone doesn't yield usable authenticator secrets without also having `AUTH_SECRET`, which is deploy-environment configuration, not application data.
+- **Enrollment requires proof of possession.** `POST /enroll/start` generates and stores a secret but leaves `mfaEnabled: false`; only `POST /enroll/confirm`, which requires a valid code generated from that secret, flips it on. An abandoned enrollment just leaves an inert, disabled secret.
+- **Backup codes** (10, single-use, SHA-256-hashed at rest — same pattern as sessions) are generated once at enrollment and shown exactly once. Consuming one is an atomic conditional update (`updateMany` with `usedAt: null` in the `WHERE`), not a read-then-write, so two concurrent requests can't both succeed with the same code.
+- **Disabling MFA requires both factors again** — current password *and* a current code (TOTP or backup) — not just an authenticated session, and revokes every other active session as a side effect (same hygiene as a password reset).
+- Verified end-to-end against a running instance: enrollment, correct/incorrect TOTP, backup-code login, backup-code single-use, attempt-lockout, and disable all behave as specified above (not merely typechecked).
+
 ## Object-level authorization (IDOR prevention, §43)
 
 `GET /api/v1/labs/:id` does not return a result because the requester is authenticated — it returns a result because `canAccess()` re-derived, from the database, that this actor is either the record's owner, a caregiver with the right scope, or a provider holding an active consent naming that scope. This check happens on **every** request, not once at login, so a revoked consent or removed caregiver link takes effect immediately.
@@ -57,11 +68,10 @@ No route in this phase grants an admin role implicit access to patient clinical 
 
 ## Secrets
 
-No secret (`DATABASE_URL`, `AUTH_SECRET`, `STORAGE_SECRET_ACCESS_KEY`, `AI_API_KEY`) is referenced from any file under `src/app/**/page.tsx` or any Client Component — they are read only in `src/lib/*` server-only modules and route handlers. `.env` is git-ignored; `.env.example` documents every variable without values. See [ENVIRONMENT.md](../ENVIRONMENT.md).
+No secret (`DATABASE_URL`, `AUTH_SECRET`, `STORAGE_SECRET_ACCESS_KEY`, `AI_API_KEY`) is referenced from any file under `src/app/**/page.tsx` or any Client Component — they are read only in `src/lib/*` server-only modules and route handlers. `.env` is git-ignored; `.env.example` documents every variable without values. `AUTH_SECRET` is now load-bearing (MFA-secret encryption key) — see [ENVIRONMENT.md](../ENVIRONMENT.md).
 
 ## What's deliberately deferred
 
-- MFA: `User.mfaEnabled`/`mfaSecret` exist in the schema; the enrollment/verification flow is not built. TOTP is the intended mechanism.
 - Malware/virus scanning on upload (§18 pipeline step "Virus/security scan") is not wired — documented gap, not a silent omission. A `StorageProvider.put()` call is the natural integration point.
 - A DB-level trigger enforcing AuditEvent/DataAccessLog append-only-ness (currently enforced only at the application layer via `src/lib/audit/`) — recommended before production.
 - Formal penetration testing / the security-test checklist in §71 (auth bypass, IDOR, privilege escalation, XSS, CSRF, rate-limit bypass) has been reasoned through in design, not run as an automated suite yet.

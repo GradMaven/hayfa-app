@@ -42,6 +42,8 @@ model User {
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
   mfaEnabled      Boolean    @default(false)
+  // AES-256-GCM ciphertext, never the raw TOTP secret — see lib/auth/mfa-crypto.ts.
+  // Set as soon as enrollment starts, before mfaEnabled flips true (§13 MFA).
   mfaSecret       String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
@@ -52,6 +54,8 @@ model User {
   sessions                Session[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  mfaBackupCodes          MfaBackupCode[]
+  mfaChallenges           MfaChallenge[]
   caregiverLinks          CaregiverLink[]          @relation("CaregiverUser")
   consentsReceived        Consent[]                @relation("ConsentRecipientUser")
   auditEvents             AuditEvent[]             @relation("AuditActor")
@@ -99,6 +103,36 @@ model EmailVerificationToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// One-time recovery codes for when the user's authenticator device is
+// unavailable. Stored hashed (same pattern as Session/reset tokens) — never
+// recoverable, only re-generatable (which invalidates the old set).
+model MfaBackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// The "second factor pending" state between a verified password and a
+// verified TOTP/backup code. Deliberately NOT a Session — no session exists
+// (and no patient data is reachable) until this challenge is satisfied. See
+// docs/security-architecture.md "MFA challenge, not a half-open session".
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

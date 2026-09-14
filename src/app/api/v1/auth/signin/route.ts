@@ -4,7 +4,8 @@ import { apiSuccess, withApiErrors, ApiException } from "@/lib/api-response";
 import { signInSchema } from "@/lib/validation/auth";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
-import { setSessionCookie } from "@/lib/auth/cookies";
+import { setSessionCookie, setMfaChallengeCookie } from "@/lib/auth/cookies";
+import { createMfaChallenge } from "@/lib/auth/mfa-challenge";
 import { getClientIp, getUserAgent } from "@/lib/request-context";
 import { writeAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -46,6 +47,25 @@ export async function POST(request: NextRequest) {
       throw genericFailure();
     }
 
+    // Password is correct. If MFA is enabled, stop here — no Session is
+    // created, only a short-lived challenge. See docs/security-architecture.md.
+    if (user.mfaEnabled) {
+      const { rawToken: challengeToken } = await createMfaChallenge(user.id);
+      await setMfaChallengeCookie(challengeToken);
+
+      await writeAuditEvent({
+        actorUserId: user.id,
+        actorLabel: user.name,
+        action: "SIGNIN_PASSWORD_VERIFIED_MFA_PENDING",
+        resourceType: "User",
+        resourceId: user.id,
+        ipAddress,
+        userAgent,
+      });
+
+      return apiSuccess({ mfaRequired: true });
+    }
+
     const { rawToken } = await createSession(user.id, { ipAddress, userAgent });
     await setSessionCookie(rawToken);
 
@@ -59,6 +79,6 @@ export async function POST(request: NextRequest) {
       userAgent,
     });
 
-    return apiSuccess({ id: user.id, name: user.name, email: user.email, role: user.role });
+    return apiSuccess({ mfaRequired: false, id: user.id, name: user.name, email: user.email, role: user.role });
   });
 }

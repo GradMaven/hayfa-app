@@ -15,7 +15,8 @@ This is a demo/development-phase project with synthetic seed data only — there
 5. **Object-level authorization is checked per request**, not cached in a session claim — a revoked consent takes effect on the very next request.
 6. **Admin roles do not bypass patient-data authorization.** No route in this codebase grants elevated roles a shortcut past `canAccess()`.
 7. **Emergency access is scoped, logged, and never silent** — see [`docs/security-architecture.md`](docs/security-architecture.md) "Emergency access is not a backdoor."
+8. **MFA never leaves a half-open session.** A password-correct, MFA-enabled sign-in gets a short-lived challenge cookie, not a session — no `Session` row exists until the second factor is verified. The TOTP secret is encrypted at rest (AES-256-GCM, keyed from `AUTH_SECRET`), not just stored. See [`docs/security-architecture.md`](docs/security-architecture.md) "Multi-factor authentication."
 
 ## Known gaps (tracked, not hidden)
 
-MFA is schema-ready but not implemented; malware scanning on document upload is not wired; audit-log append-only-ness is enforced at the application layer only (no DB trigger yet); no automated security test suite (IDOR/XSS/CSRF/rate-limit-bypass) has been run. Full list: [`docs/security-architecture.md`](docs/security-architecture.md) "What's deliberately deferred."
+Malware scanning on document upload is not wired; audit-log append-only-ness is enforced at the application layer only (no DB trigger yet); no automated security test suite (IDOR/XSS/CSRF/rate-limit-bypass) has been run. Full list: [`docs/security-architecture.md`](docs/security-architecture.md) "What's deliberately deferred."

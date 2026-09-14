@@ -5,7 +5,7 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | Variable | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string, read by Prisma |
-| `AUTH_SECRET` | Yes | Not currently used to sign anything (sessions are opaque, hashed tokens — see `docs/security-architecture.md`), reserved for future use (e.g. CSRF token signing). Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
+| `AUTH_SECRET` | Yes | The AES-256 key used to encrypt MFA (TOTP) secrets at rest — must be a 64-character hex string (32 bytes). Losing or rotating it invalidates every enrolled user's MFA secret (they'd need to re-enroll). Sessions themselves don't use it (they're opaque, hashed tokens — see `docs/security-architecture.md`). Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
 | `SESSION_COOKIE_NAME` | No (default `hafya_session`) | Name of the session cookie |
 | `SESSION_TTL_DAYS` | No (default `30`) | How long a session stays valid without being revoked |
 | `STORAGE_PROVIDER` | No (default `s3`) | Reserved for future non-S3 providers; only S3-compatible is implemented |

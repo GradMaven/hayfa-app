@@ -8,7 +8,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 
 | Module | Status |
 |---|---|
-| Authentication | Built — custom, revocable sessions |
+| Authentication | Built — custom, revocable sessions, TOTP-based MFA with backup codes |
 | User Profiles / Patient Health Record | Built |
 | Health Timeline | Built |
 | Documents + OCR (mocked) | Built |

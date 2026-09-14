@@ -22,6 +22,10 @@ Cookie-based (`HttpOnly`, `SameSite=Lax`). Sign in via `POST /api/v1/auth/signin
 ```
 POST   /api/v1/auth/signup | signin | signout
 GET    /api/v1/auth/session
+POST   /api/v1/auth/mfa/verify                          (completes an MFA-pending sign-in)
+POST   /api/v1/auth/mfa/enroll/start | enroll/confirm
+GET    /api/v1/auth/mfa/status
+POST   /api/v1/auth/mfa/disable | backup-codes/regenerate
 GET    /api/v1/patients/me
 POST   /api/v1/patients/me                 (create profile)
 PATCH  /api/v1/patients/me                 (update profile)
