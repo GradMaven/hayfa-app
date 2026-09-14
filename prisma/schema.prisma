@@ -1,0 +1,949 @@
+// Hafya — canonical health data model.
+// See /docs/database-architecture.md for the reasoning behind these choices.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Identity & access
+// ─────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  PATIENT
+  CAREGIVER
+  PROVIDER
+  PROVIDER_ADMIN
+  ORG_ADMIN
+  INTEGRATION_ADMIN
+  PLATFORM_SUPPORT
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String?    @unique
+  phone           String?    @unique
+  passwordHash    String
+  name            String
+  role            UserRole   @default(PATIENT)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  mfaEnabled      Boolean    @default(false)
+  mfaSecret       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  patientProfile          PatientProfile?
+  providerProfile         HealthcareProvider?
+  sessions                Session[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  caregiverLinks          CaregiverLink[]          @relation("CaregiverUser")
+  consentsReceived        Consent[]                @relation("ConsentRecipientUser")
+  auditEvents             AuditEvent[]             @relation("AuditActor")
+  dataAccessLogs          DataAccessLog[]          @relation("AccessActor")
+  emergencyRequests       EmergencyAccess[]        @relation("EmergencyRequestedBy")
+  notifications           Notification[]
+  documentsUploaded       Document[]               @relation("DocumentUploadedBy")
+  subscription            Subscription?
+
+  @@index([email])
+  @@index([phone])
+}
+
+// Opaque, revocable, DB-backed sessions — see docs/security-architecture.md.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Patient profile
+// ─────────────────────────────────────────────────────────────────────────
+
+enum BiologicalSex {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum BloodType {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+  UNKNOWN
+}
+
+model PatientProfile {
+  id                     String              @id @default(cuid())
+  userId                 String              @unique
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName               String
+  dateOfBirth            DateTime
+  biologicalSex          BiologicalSex       @default(UNSPECIFIED)
+  country                String              @default("Kenya")
+  county                 String?
+  preferredLanguage      String              @default("en")
+  bloodType              BloodType           @default(UNKNOWN)
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  primaryCareProviderId  String?
+  primaryCareProvider    HealthcareProvider? @relation("PrimaryCareFor", fields: [primaryCareProviderId], references: [id])
+  insuranceProvider      String?
+  insuranceMemberId      String?
+  emergencyAccessEnabled Boolean             @default(false)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  deletedAt              DateTime?
+
+  encounters        Encounter[]
+  diagnoses         Diagnosis[]
+  conditions        Condition[]
+  medications       Medication[]
+  labTests          LabTest[]
+  labResults        LabResult[]
+  vitals            Vital[]
+  immunizations     Immunization[]
+  procedures        Procedure[]
+  allergies         Allergy[]
+  documents         Document[]
+  appointments      Appointment[]
+  carePlans         CarePlan[]
+  healthEvents      HealthEvent[]
+  consents          Consent[]         @relation("ConsentOwner")
+  caregiverLinks    CaregiverLink[]   @relation("PatientOfCaregiver")
+  emergencyAccesses EmergencyAccess[]
+  dataAccessLogs    DataAccessLog[]   @relation("AccessSubject")
+  auditEvents       AuditEvent[]      @relation("AuditPatient")
+  externalRecords   ExternalRecord[]
+
+  @@index([userId])
+}
+
+enum CaregiverLinkStatus {
+  ACTIVE
+  REVOKED
+}
+
+// Scope strings this app currently recognizes for CaregiverLink.permissions
+// and Consent.dataScopes: MEDICATIONS, ALLERGIES, APPOINTMENTS, LAB_RESULTS,
+// CONDITIONS, DOCUMENTS, VITALS, IMMUNIZATIONS, CARE_PLANS, MENTAL_HEALTH,
+// INSURANCE. Enforced by lib/consent, not by a DB enum, so new scopes don't
+// require a migration.
+model CaregiverLink {
+  id              String              @id @default(cuid())
+  patientId       String
+  patient         PatientProfile      @relation("PatientOfCaregiver", fields: [patientId], references: [id], onDelete: Cascade)
+  caregiverUserId String
+  caregiverUser   User                @relation("CaregiverUser", fields: [caregiverUserId], references: [id], onDelete: Cascade)
+  relationship    String?
+  permissions     String[]
+  status          CaregiverLinkStatus @default(ACTIVE)
+  createdAt       DateTime            @default(now())
+  revokedAt       DateTime?
+
+  @@unique([patientId, caregiverUserId])
+  @@index([caregiverUserId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Organizations & providers
+// ─────────────────────────────────────────────────────────────────────────
+
+enum OrganizationType {
+  HOSPITAL
+  CLINIC
+  LABORATORY
+  PHARMACY
+  INSURER
+  NGO
+  EMPLOYER
+  COUNTY_PROGRAM
+}
+
+model Organization {
+  id        String           @id @default(cuid())
+  name      String
+  type      OrganizationType
+  county    String?
+  verified  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  providers    HealthcareProvider[]
+  integrations Integration[]
+  subscription Subscription?
+
+  @@index([type])
+}
+
+enum ProviderVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model HealthcareProvider {
+  id                 String                     @id @default(cuid())
+  userId             String                     @unique
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId     String?
+  organization       Organization?              @relation(fields: [organizationId], references: [id])
+  fullName           String
+  specialty          String?
+  licenseNumber      String?
+  verificationStatus ProviderVerificationStatus @default(PENDING)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  primaryCareFor PatientProfile[] @relation("PrimaryCareFor")
+  encounters     Encounter[]
+  diagnoses      Diagnosis[]
+  conditions     Condition[]
+  medications    Medication[]
+  prescriptions  Prescription[]
+  labTests       LabTest[]
+  carePlans      CarePlan[]
+  appointments   Appointment[]
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Provenance & verification — attached to every clinical record
+// ─────────────────────────────────────────────────────────────────────────
+
+enum DataSourceType {
+  PATIENT_ENTERED
+  PROVIDER_ENTERED
+  HOSPITAL_INTEGRATION
+  LAB_INTEGRATION
+  INSURANCE_INTEGRATION
+  WEARABLE
+  OCR
+  IMPORTED_DOCUMENT
+  API
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  PROVIDER_VERIFIED
+  AI_EXTRACTED_UNCONFIRMED
+  PATIENT_CONFIRMED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Clinical record
+// ─────────────────────────────────────────────────────────────────────────
+
+model Encounter {
+  id                 String              @id @default(cuid())
+  patientId          String
+  patient            PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  providerId         String?
+  provider           HealthcareProvider? @relation(fields: [providerId], references: [id])
+  organizationName   String?
+  encounterDate      DateTime
+  encounterType      String
+  reason             String?
+  notes              String?
+  source             DataSourceType      @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  diagnoses Diagnosis[]
+  documents Document[]
+
+  @@index([patientId, encounterDate])
+}
+
+model Diagnosis {
+  id                 String              @id @default(cuid())
+  patientId          String
+  patient            PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounterId        String?
+  encounter          Encounter?          @relation(fields: [encounterId], references: [id])
+  providerId         String?
+  provider           HealthcareProvider? @relation(fields: [providerId], references: [id])
+  conditionName      String
+  icdCode            String?
+  diagnosedDate      DateTime
+  notes              String?
+  source             DataSourceType      @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  @@index([patientId, diagnosedDate])
+}
+
+enum ConditionStatus {
+  ACTIVE
+  MANAGED
+  RESOLVED
+}
+
+enum ConditionSeverity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+model Condition {
+  id                 String              @id @default(cuid())
+  patientId          String
+  patient            PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name               String
+  category           String?
+  dateDiagnosed      DateTime?
+  status             ConditionStatus     @default(ACTIVE)
+  severity           ConditionSeverity?
+  providerId         String?
+  provider           HealthcareProvider? @relation(fields: [providerId], references: [id])
+  notes              String?
+  source             DataSourceType      @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  carePlans   CarePlan[]
+  medications Medication[]
+
+  @@index([patientId, status])
+}
+
+enum MedicationStatus {
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+  PAUSED
+}
+
+model Medication {
+  id                 String              @id @default(cuid())
+  patientId          String
+  patient            PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name               String
+  dose               String?
+  frequency          String?
+  route              String?
+  startDate          DateTime?
+  endDate            DateTime?
+  prescriberId       String?
+  prescriber         HealthcareProvider? @relation(fields: [prescriberId], references: [id])
+  purpose            String?
+  relatedConditionId String?
+  relatedCondition   Condition?          @relation(fields: [relatedConditionId], references: [id])
+  status             MedicationStatus    @default(ACTIVE)
+  source             DataSourceType      @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  reminders     MedicationReminder[]
+  prescriptions Prescription[]
+
+  @@index([patientId, status])
+}
+
+model MedicationReminder {
+  id           String     @id @default(cuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  timeOfDay    String
+  daysOfWeek   String[]
+  enabled      Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+}
+
+model Prescription {
+  id           String             @id @default(cuid())
+  medicationId String
+  medication   Medication         @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  prescriberId String
+  prescriber   HealthcareProvider @relation(fields: [prescriberId], references: [id])
+  issuedDate   DateTime
+  notes        String?
+  createdAt    DateTime           @default(now())
+}
+
+model LabTest {
+  id             String              @id @default(cuid())
+  patientId      String
+  patient        PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  testName       String
+  orderedDate    DateTime?
+  providerId     String?
+  provider       HealthcareProvider? @relation(fields: [providerId], references: [id])
+  laboratoryName String?
+  createdAt      DateTime            @default(now())
+
+  results LabResult[]
+}
+
+enum LabResultFlag {
+  NORMAL
+  LOW
+  HIGH
+  CRITICAL
+}
+
+model LabResult {
+  id                     String             @id @default(cuid())
+  patientId              String
+  patient                PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  labTestId              String?
+  labTest                LabTest?           @relation(fields: [labTestId], references: [id])
+  testName               String
+  resultValue            String
+  unit                   String?
+  referenceRange         String?
+  flag                   LabResultFlag      @default(NORMAL)
+  testDate               DateTime
+  providerName           String?
+  laboratoryName         String?
+  documentId             String?
+  document               Document?          @relation(fields: [documentId], references: [id])
+  source                 DataSourceType     @default(PATIENT_ENTERED)
+  verificationStatus     VerificationStatus @default(UNVERIFIED)
+  aiExtractionConfidence Float?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  deletedAt              DateTime?
+
+  @@index([patientId, testName, testDate])
+}
+
+enum VitalType {
+  BLOOD_PRESSURE
+  BLOOD_GLUCOSE
+  WEIGHT
+  HEART_RATE
+  TEMPERATURE
+  OXYGEN_SATURATION
+  HEIGHT
+  BMI
+}
+
+model Vital {
+  id                 String             @id @default(cuid())
+  patientId          String
+  patient            PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type               VitalType
+  value              Float
+  secondaryValue     Float?
+  unit               String
+  recordedAt         DateTime
+  source             DataSourceType     @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now())
+  deletedAt          DateTime?
+
+  @@index([patientId, type, recordedAt])
+}
+
+model Immunization {
+  id                 String             @id @default(cuid())
+  patientId          String
+  patient            PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  vaccineName        String
+  doseNumber         Int?
+  administeredDate   DateTime
+  providerName       String?
+  lotNumber          String?
+  source             DataSourceType     @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now())
+  deletedAt          DateTime?
+
+  @@index([patientId, administeredDate])
+}
+
+model Procedure {
+  id                 String             @id @default(cuid())
+  patientId          String
+  patient            PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name               String
+  procedureDate      DateTime
+  providerName       String?
+  notes              String?
+  source             DataSourceType     @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now())
+  deletedAt          DateTime?
+
+  @@index([patientId, procedureDate])
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+  UNKNOWN
+}
+
+model Allergy {
+  id                 String             @id @default(cuid())
+  patientId          String
+  patient            PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  allergen           String
+  reaction           String?
+  severity           AllergySeverity    @default(UNKNOWN)
+  notedDate          DateTime?
+  source             DataSourceType     @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now())
+  deletedAt          DateTime?
+
+  @@index([patientId])
+}
+
+enum DocumentType {
+  PRESCRIPTION
+  LAB_REPORT
+  DISCHARGE_SUMMARY
+  IMAGING_REPORT
+  INVOICE
+  REFERRAL
+  VACCINATION_CARD
+  MEDICAL_CERTIFICATE
+  INSURANCE_DOCUMENT
+  OTHER
+}
+
+enum DocumentSensitivity {
+  STANDARD
+  SENSITIVE
+}
+
+enum OcrStatus {
+  NOT_APPLICABLE
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CONFIRMED
+}
+
+model Document {
+  id                 String              @id @default(cuid())
+  patientId          String
+  patient            PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounterId        String?
+  encounter          Encounter?          @relation(fields: [encounterId], references: [id])
+  documentType       DocumentType
+  title              String
+  providerName       String?
+  documentDate       DateTime?
+  uploadedAt         DateTime            @default(now())
+  uploadedByUserId   String
+  uploadedBy         User                @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id])
+  storageKey         String
+  mimeType           String
+  sizeBytes          Int
+  fileHash           String
+  source             DataSourceType      @default(PATIENT_ENTERED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  sensitivity        DocumentSensitivity @default(STANDARD)
+  ocrStatus          OcrStatus           @default(NOT_APPLICABLE)
+  ocrExtractedData   Json?
+  ocrConfidence      Float?
+  tags               String[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  labResults LabResult[]
+
+  @@index([patientId, documentType])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id           String              @id @default(cuid())
+  patientId    String
+  patient      PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  providerId   String?
+  provider     HealthcareProvider? @relation(fields: [providerId], references: [id])
+  providerName String?
+  scheduledAt  DateTime
+  reason       String?
+  location     String?
+  status       AppointmentStatus   @default(SCHEDULED)
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  deletedAt    DateTime?
+
+  @@index([patientId, scheduledAt])
+}
+
+enum CarePlanStatus {
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+}
+
+model CarePlan {
+  id          String              @id @default(cuid())
+  patientId   String
+  patient     PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  conditionId String?
+  condition   Condition?          @relation(fields: [conditionId], references: [id])
+  title       String
+  goal        String
+  providerId  String?
+  provider    HealthcareProvider? @relation(fields: [providerId], references: [id])
+  status      CarePlanStatus      @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
+
+  @@index([patientId, status])
+}
+
+// Thin, generated timeline index — see docs/database-architecture.md.
+enum HealthEventType {
+  ENCOUNTER
+  DIAGNOSIS
+  MEDICATION
+  LAB
+  VITAL
+  IMMUNIZATION
+  PROCEDURE
+  DOCUMENT
+  APPOINTMENT
+  CARE_PLAN
+}
+
+model HealthEvent {
+  id               String          @id @default(cuid())
+  patientId        String
+  patient          PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type             HealthEventType
+  title            String
+  description      String?
+  eventDate        DateTime
+  sourceEntityType String
+  sourceEntityId   String
+  createdAt        DateTime        @default(now())
+
+  @@index([patientId, eventDate])
+  @@index([patientId, type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Consent, sharing, emergency access, audit
+// ─────────────────────────────────────────────────────────────────────────
+
+enum ConsentRecipientType {
+  PROVIDER
+  CAREGIVER
+  ORGANIZATION
+}
+
+enum ConsentDuration {
+  ONE_TIME
+  HOURS_24
+  DAYS_7
+  DAYS_30
+  UNTIL_REVOKED
+}
+
+enum ConsentStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model Consent {
+  id               String               @id @default(cuid())
+  patientId        String
+  patient          PatientProfile       @relation("ConsentOwner", fields: [patientId], references: [id], onDelete: Cascade)
+  recipientType    ConsentRecipientType
+  recipientUserId  String?
+  recipientUser    User?                @relation("ConsentRecipientUser", fields: [recipientUserId], references: [id])
+  recipientLabel   String
+  purpose          String
+  dataScopes       String[]
+  duration         ConsentDuration
+  grantedAt        DateTime             @default(now())
+  expiresAt        DateTime?
+  status           ConsentStatus        @default(ACTIVE)
+  revokedAt        DateTime?
+  revocationReason String?
+  createdAt        DateTime             @default(now())
+
+  accessLogs DataAccessLog[]
+
+  @@index([patientId, status])
+  @@index([recipientUserId])
+}
+
+enum EmergencyAccessStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model EmergencyAccess {
+  id                 String                @id @default(cuid())
+  patientId          String
+  patient            PatientProfile        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  requestedByUserId  String
+  requestedBy        User                  @relation("EmergencyRequestedBy", fields: [requestedByUserId], references: [id])
+  reason             String
+  verificationMethod String?
+  datasetScope       String[]              @default(["EMERGENCY_SUMMARY"])
+  grantedAt          DateTime              @default(now())
+  expiresAt          DateTime
+  status             EmergencyAccessStatus @default(ACTIVE)
+  createdAt          DateTime              @default(now())
+
+  @@index([patientId])
+}
+
+enum DataAccessAction {
+  VIEW
+  CREATE
+  UPDATE
+  DELETE
+  EXPORT
+}
+
+enum AccessResult {
+  ALLOWED
+  DENIED
+}
+
+// Append-only. Application layer never issues update/delete against this model.
+model DataAccessLog {
+  id           String           @id @default(cuid())
+  patientId    String
+  patient      PatientProfile   @relation("AccessSubject", fields: [patientId], references: [id], onDelete: Cascade)
+  actorUserId  String?
+  actor        User?            @relation("AccessActor", fields: [actorUserId], references: [id])
+  actorLabel   String
+  consentId    String?
+  consent      Consent?         @relation(fields: [consentId], references: [id])
+  resourceType String
+  resourceId   String?
+  action       DataAccessAction
+  purpose      String?
+  result       AccessResult     @default(ALLOWED)
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime         @default(now())
+
+  @@index([patientId, createdAt])
+}
+
+// Append-only, platform-wide (not just patient-scoped) security/audit trail.
+model AuditEvent {
+  id           String          @id @default(cuid())
+  actorUserId  String?
+  actor        User?           @relation("AuditActor", fields: [actorUserId], references: [id])
+  actorLabel   String?
+  action       String
+  resourceType String
+  resourceId   String?
+  patientId    String?
+  patient      PatientProfile? @relation("AuditPatient", fields: [patientId], references: [id])
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime        @default(now())
+
+  @@index([createdAt])
+  @@index([patientId])
+  @@index([actorUserId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notifications
+// ─────────────────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  APPOINTMENT
+  MEDICATION
+  CONSENT
+  ACCESS
+  DOCUMENT_PROCESSING
+  LAB_RESULT
+  CARE_PLAN
+  SECURITY
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  USSD
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+model Notification {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              NotificationType
+  channel           NotificationChannel @default(IN_APP)
+  title             String
+  body              String
+  status            NotificationStatus  @default(PENDING)
+  relatedEntityType String?
+  relatedEntityId   String?
+  sentAt            DateTime?
+  readAt            DateTime?
+  createdAt         DateTime            @default(now())
+
+  @@index([userId, status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Integrations (mocked in this phase — see docs/integration-architecture.md)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum IntegrationType {
+  HOSPITAL
+  LABORATORY
+  PHARMACY
+  INSURANCE
+  WEARABLE
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model Integration {
+  id             String            @id @default(cuid())
+  organizationId String?
+  organization   Organization?     @relation(fields: [organizationId], references: [id])
+  provider       String
+  type           IntegrationType
+  status         IntegrationStatus @default(INACTIVE)
+  config         Json?
+  createdAt      DateTime          @default(now())
+
+  externalRecords ExternalRecord[]
+}
+
+model ExternalRecord {
+  id               String          @id @default(cuid())
+  integrationId    String
+  integration      Integration     @relation(fields: [integrationId], references: [id])
+  patientId        String?
+  patient          PatientProfile? @relation(fields: [patientId], references: [id])
+  externalId       String
+  rawPayload       Json
+  mappedEntityType String?
+  mappedEntityId   String?
+  importedAt       DateTime        @default(now())
+
+  @@index([integrationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Billing (data model only — no payment provider wired in this phase)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  PROVIDER
+  ORGANIZATION
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String?            @unique
+  user             User?              @relation(fields: [userId], references: [id])
+  organizationId   String?            @unique
+  organization     Organization?      @relation(fields: [organizationId], references: [id])
+  plan             SubscriptionPlan   @default(FREE)
+  status           SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
