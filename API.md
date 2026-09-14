@@ -1,0 +1,66 @@
+# API
+
+Full route inventory and conventions: [`docs/api-architecture.md`](docs/api-architecture.md). This file is the quick-reference.
+
+## Envelope
+
+```jsonc
+// success
+{ "success": true, "data": { /* ... */ }, "meta": {} }
+// error
+{ "success": false, "error": { "code": "FORBIDDEN", "message": "..." } }
+```
+
+Codes: `UNAUTHENTICATED` (401) · `FORBIDDEN` (403) · `NOT_FOUND` (404) · `VALIDATION_ERROR` (422) · `CONFLICT` (409) · `RATE_LIMITED` (429) · `INTERNAL_ERROR` (500).
+
+## Auth
+
+Cookie-based (`HttpOnly`, `SameSite=Lax`). Sign in via `POST /api/v1/auth/signin`, then every subsequent request from a browser carries the session cookie automatically. There is no bearer-token/API-key auth for external callers yet — see [`docs/api-architecture.md`](docs/api-architecture.md) "What's deferred" for the developer-API plan.
+
+## Most-used routes
+
+```
+POST   /api/v1/auth/signup | signin | signout
+GET    /api/v1/auth/session
+GET    /api/v1/patients/me
+POST   /api/v1/patients/me                 (create profile)
+PATCH  /api/v1/patients/me                 (update profile)
+
+GET    /api/v1/{medications,conditions,labs,vitals,allergies,immunizations,appointments,care-plans}?patientId=
+POST   /api/v1/{same}                      (create)
+PATCH  /api/v1/{same}/:id                  (update — not on vitals/immunizations, see docs/api-architecture.md)
+DELETE /api/v1/{same}/:id                  (soft delete)
+
+GET    /api/v1/timeline?type=&search=&from=&to=&cursor=&limit=
+GET    /api/v1/dashboard/summary?patientId=
+
+POST   /api/v1/documents                   (multipart upload)
+GET    /api/v1/documents?patientId=
+GET    /api/v1/documents/:id/download      (short-lived signed URL)
+POST   /api/v1/documents/:id/ocr           (mock extraction, draft only)
+POST   /api/v1/documents/:id/ocr/confirm   (the only path that writes a structured record from OCR)
+
+GET    /api/v1/consents?patientId=
+POST   /api/v1/consents                    (grant — patient-owned action)
+POST   /api/v1/consents/:id/revoke
+
+GET    /api/v1/audit?patientId=            (access history)
+GET    /api/v1/export?patientId=           (full record, JSON)
+```
+
+Every route accepting `?patientId=` defaults to the caller's own patient profile when omitted — a patient's own client code never has to know or pass its own ID.
+
+## Adding a new patient-scoped route
+
+Follow the pattern in any existing resource (e.g. [`src/app/api/v1/medications/route.ts`](src/app/api/v1/medications/route.ts)):
+
+```ts
+const actor = await requireUser();
+const patientId = resolvePatientId(actor, body.patientId);
+await authorizePatientAccess(request, { patientId, scope: "MEDICATIONS", action: "CREATE", resourceType: "Medication" });
+const input = mySchema.parse(body);
+// ...Prisma write...
+await recordHealthEvent({ ... }); // if it belongs on the timeline
+```
+
+Skipping `authorizePatientAccess` is the one mistake that turns a route into an IDOR vulnerability — see [`SECURITY.md`](SECURITY.md).

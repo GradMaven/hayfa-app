@@ -40,7 +40,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           ocrConfidence: result.overallConfidence,
         },
       });
-      return apiSuccess(updated);
+      // storageKey is never returned to the client (§45) — same rule as the
+      // plain document GET route.
+      const { storageKey, ...safe } = updated;
+      void storageKey;
+      return apiSuccess(safe);
     } catch (err) {
       await db.document.update({ where: { id }, data: { ocrStatus: "FAILED" } });
       throw err;

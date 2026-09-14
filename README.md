@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hafya
 
-## Getting Started
+A privacy-first personal health-data platform for Africa, starting with Kenya. Patients bring fragmented health records together into one timeline they own, understand, and control access to.
 
-First, run the development server:
+See [`docs/discovery-report.md`](docs/discovery-report.md) for the full technical discovery and scope decisions behind this build, and [`docs/product-architecture.md`](docs/product-architecture.md) for what's built vs. deferred.
+
+## Stack
+
+Next.js 15 (App Router) · TypeScript strict · Tailwind CSS v4 · PostgreSQL + Prisma · S3-compatible object storage · custom revocable-session auth · Zod + React Hook Form · TanStack Query.
+
+## Getting started
+
+Requires Node 20+, Docker (for local Postgres + MinIO).
 
 ```bash
+cp .env.example .env          # generates nothing on its own — see below for a real AUTH_SECRET
+npm install
+docker compose up -d          # starts Postgres (5432) and MinIO (9000/9001)
+npm run db:migrate            # applies the schema
+npm run db:seed               # loads synthetic demo data (clearly marked, never real patient data)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Demo logins (password `DemoPass123!`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Patient: `amina.demo@hafya.demo`
+- Provider: `dr.mwangi.demo@hafya.demo`
+- Caregiver: `peter.demo@hafya.demo`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Generate a real `AUTH_SECRET` before running anything beyond a throwaway local session:
 
-## Learn More
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-To learn more about Next.js, take a look at the following resources:
+The first time you start MinIO, create the dev bucket (already done for you if you ran the commands above in order, since `docker-compose.yml` doesn't auto-create it — see [`ENVIRONMENT.md`](ENVIRONMENT.md) if you need to recreate it):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker exec hafya-app-minio-1 sh -c \
+  "mc alias set local http://localhost:9000 hafya_minio hafya_minio_password && \
+   mc mb -p local/hafya-documents-dev && mc anonymous set none local/hafya-documents-dev"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm start` | Production build / run |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest unit tests |
+| `npm run db:migrate` | `prisma migrate dev` |
+| `npm run db:seed` | Load synthetic demo data |
+| `npm run db:studio` | Prisma Studio (inspect the local DB) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — start here for the system as a whole
+- [`SECURITY.md`](SECURITY.md), [`PRIVACY.md`](PRIVACY.md) — the rules this codebase enforces and why
+- [`API.md`](API.md) — route inventory and conventions
+- [`ENVIRONMENT.md`](ENVIRONMENT.md) — every env var explained
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — deploying beyond local dev
+- [`docs/`](docs/) — full architecture, UX, and privacy documentation set
+
+## Status
+
+This is a Phase 1 MVP: the patient-facing golden path (account → profile → documents → timeline → medications/labs/vitals/conditions → consent-based sharing → revocation → access log → export) is fully built and working end-to-end. Provider portal, organization dashboards, billing, real integrations, and SMS/USSD are explicitly out of scope for this phase — see [`docs/discovery-report.md`](docs/discovery-report.md) for the full breakdown of what's built vs. deferred and why.

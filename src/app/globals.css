@@ -1,26 +1,122 @@
 @import "tailwindcss";
 
+/*
+  Hafya design tokens. Calm, clinical-credible, premium — not a hospital
+  billing system, not a neon SaaS dashboard. See docs/ux/design-system.md.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --background: #faf9f7;
+  --surface: #ffffff;
+  --surface-alt: #f4f2ee;
+  --border: #e5e1da;
+  --foreground: #1c1f1e;
+  --muted: #6b7270;
+  --muted-2: #8b918e;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --primary: #0f6e5d;
+  --primary-hover: #0b5a4c;
+  --primary-foreground: #ffffff;
+  --primary-tint: #e6f2ef;
+
+  --accent: #c9a24b;
+  --accent-tint: #f7efdc;
+
+  --success: #1f7a4d;
+  --success-tint: #e7f4ec;
+  --warning: #a15c00;
+  --warning-tint: #fbf0dc;
+  --danger: #b3261e;
+  --danger-tint: #fbe9e7;
+  --info: #1b5e8c;
+  --info-tint: #e8f1f8;
+
+  --focus-ring: #0f6e5d;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+
+  --shadow-sm: 0 1px 2px rgba(20, 24, 22, 0.05);
+  --shadow-md: 0 4px 16px rgba(20, 24, 22, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #101413;
+    --surface: #161b19;
+    --surface-alt: #1c2220;
+    --border: #2a322f;
+    --foreground: #edf1ef;
+    --muted: #a2aba7;
+    --muted-2: #7c8683;
+
+    --primary: #3fa98d;
+    --primary-hover: #52bb9f;
+    --primary-foreground: #08110e;
+    --primary-tint: #16302a;
+
+    --accent: #d8b968;
+    --accent-tint: #2c2716;
+
+    --success: #4ecb8b;
+    --success-tint: #123322;
+    --warning: #e0a84a;
+    --warning-tint: #33280f;
+    --danger: #e3766e;
+    --danger-tint: #3a1917;
+    --info: #6fb3e0;
+    --info-tint: #142a38;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-tint: var(--primary-tint);
+  --color-accent: var(--accent);
+  --color-accent-tint: var(--accent-tint);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-info: var(--info);
+  --color-info-tint: var(--info-tint);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

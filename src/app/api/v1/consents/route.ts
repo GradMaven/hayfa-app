@@ -43,11 +43,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const patientId = resolvePatientId(actor, body.patientId);
     if (patientId !== actor.patientProfileId) {
-      const { ApiException } = await import("@/lib/api-response");
       throw new ApiException("FORBIDDEN", "Only the patient can grant access to their own record.");
     }
 
     const input = createConsentSchema.parse(body);
+
+    const recipient = await db.user.findUnique({ where: { email: input.recipientEmail } });
+    if (!recipient) {
+      throw new ApiException(
+        "NOT_FOUND",
+        "No Hafya account found for that email. Ask them to create an account first."
+      );
+    }
+    if (recipient.id === actor.id) {
+      throw new ApiException("VALIDATION_ERROR", "You cannot grant access to yourself.");
+    }
+
     const durationMs = DURATION_TO_MS[input.duration];
     const expiresAt = durationMs ? new Date(Date.now() + durationMs) : null;
 
@@ -55,8 +66,8 @@ export async function POST(request: NextRequest) {
       data: {
         patientId,
         recipientType: input.recipientType,
-        recipientUserId: input.recipientUserId,
-        recipientLabel: input.recipientLabel,
+        recipientUserId: recipient.id,
+        recipientLabel: recipient.name,
         purpose: input.purpose,
         dataScopes: input.dataScopes,
         duration: input.duration,
@@ -72,21 +83,19 @@ export async function POST(request: NextRequest) {
       resourceType: "Consent",
       resourceId: consent.id,
       patientId,
-      metadata: { recipientLabel: input.recipientLabel, dataScopes: input.dataScopes, duration: input.duration },
+      metadata: { recipientLabel: recipient.name, dataScopes: input.dataScopes, duration: input.duration },
       ipAddress: getClientIp(request),
       userAgent: getUserAgent(request),
     });
 
-    if (input.recipientUserId) {
-      await notify({
-        userId: input.recipientUserId,
-        type: "CONSENT",
-        title: "You've been granted access to a patient record",
-        body: `${actor.name} shared: ${input.dataScopes.join(", ")}.`,
-        relatedEntityType: "Consent",
-        relatedEntityId: consent.id,
-      });
-    }
+    await notify({
+      userId: recipient.id,
+      type: "CONSENT",
+      title: "You've been granted access to a patient record",
+      body: `${actor.name} shared: ${input.dataScopes.join(", ")}.`,
+      relatedEntityType: "Consent",
+      relatedEntityId: consent.id,
+    });
 
     return apiSuccess(consent, undefined, 201);
   });
