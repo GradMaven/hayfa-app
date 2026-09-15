@@ -52,6 +52,11 @@ export default function SignUpPage() {
           <FieldError>{errors.email?.message}</FieldError>
         </div>
         <div>
+          <Label htmlFor="phone">Phone number (optional)</Label>
+          <Input id="phone" type="tel" autoComplete="tel" placeholder="+254712345678" {...register("phone")} />
+          <FieldError>{errors.phone?.message}</FieldError>
+        </div>
+        <div>
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
           <FieldError>{errors.password?.message}</FieldError>

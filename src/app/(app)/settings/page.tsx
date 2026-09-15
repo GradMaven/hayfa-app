@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/utils";
 import { MfaCard } from "./mfa-card";
+import { PhoneCard } from "./phone-card";
 
 interface SessionRecord {
   id: string;
@@ -95,6 +96,8 @@ export default function SettingsPage() {
         </Card>
 
         <MfaCard />
+
+        <PhoneCard />
 
         <Card>
           <CardHeader>

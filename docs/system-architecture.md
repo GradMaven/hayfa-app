@@ -90,7 +90,8 @@ hafya-app/
       ai/                         AIProvider interface + mock impl
       ocr/                        OCRProvider interface + mock impl
       integrations/                HealthDataConnector interface + mock connector
-      notifications/               NotificationProvider interface + in-app/email impls
+      notifications/               NotificationProvider interface + in-app/email/SMS impls
+      sms/                         SmsProvider interface + console/Africa's Talking impls
       validation/                  Zod schemas, one per domain entity
       db.ts                       Prisma client singleton
       feature-flags.ts

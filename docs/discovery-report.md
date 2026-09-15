@@ -53,7 +53,7 @@ Underneath that surface: RBAC scaffold (patient/caregiver/provider/admin roles),
 - Organization/admin dashboards with staff & billing management (§60–61)
 - Real hospital/lab/insurance/wearable integrations — `HealthDataConnector` interface exists, only a mock connector is wired (§36, §87)
 - Billing/subscriptions/entitlements (§58–59) — data model stubbed, no payment provider wired
-- SMS/USSD delivery — `NotificationProvider` interface exists, only in-app/email channel wired (§39–40)
+- SMS/USSD delivery — `NotificationProvider` interface exists, only in-app/email channel wired (§39–40). (Real SMS — Africa's Talking — was wired in a later session; USSD remains deferred, being architecturally an inbound-session feature rather than a push channel. See [notification-architecture.md](notification-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)
 - FHIR mapping layer (§34–35) — canonical model is FHIR-shaped where practical, no live FHIR I/O yet
 - Webhooks (§49)
 - Real OCR vendor calls (§18) — interface + mock implementation only. (A real AI vendor, and later a real OCR vendor — both Anthropic/Claude — were wired in later sessions; see [ai-architecture.md](ai-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)

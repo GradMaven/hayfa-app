@@ -15,7 +15,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | Laboratory Results, Medications, Conditions, Allergies, Immunizations, Vitals, Appointments | Built — includes a patient-initiated correction workflow (§56) for medications/conditions/labs once a record is provider-verified or not patient-sourced, instead of a silent direct overwrite |
 | Chronic Conditions + Care Plans | Built (condition/care-plan CRUD; no clinician-facing care-plan authoring UI yet) |
 | Consent & Permissions, Data Sharing, Emergency Access | Built |
-| Notifications | Built — in-app + real email (SMTP, any vendor); SMS/USSD/push not wired |
+| Notifications | Built — in-app + real email (SMTP, any vendor) + real SMS (Africa's Talking), off by default, unit-tested but not yet live-API-verified; USSD is a materially different (inbound-session, not push) feature and remains deferred, push not wired — see notification-architecture.md |
 | Audit Logs | Built |
 | AI Health Insights | Built — mock provider by default; a real vendor (Anthropic/Claude) is wired and verified against the live API, off by default |
 | Provider Portal | Minimal placeholder only (`/portal`) — see [discovery-report.md](discovery-report.md) |

@@ -20,15 +20,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = signUpSchema.parse(body);
 
-    const existing = await db.user.findUnique({ where: { email: input.email } });
+    const phone = input.phone || undefined;
+
+    const existing = await db.user.findFirst({
+      where: { OR: [{ email: input.email }, ...(phone ? [{ phone }] : [])] },
+    });
     if (existing) {
-      // Deliberately vague — do not reveal whether an email is registered.
+      // Deliberately vague — do not reveal whether an email or phone is registered.
       throw new ApiException("CONFLICT", "Could not create an account with those details.");
     }
 
     const passwordHash = await hashPassword(input.password);
     const user = await db.user.create({
-      data: { name: input.name, email: input.email, passwordHash, role: "PATIENT" },
+      data: { name: input.name, email: input.email, phone, passwordHash, role: "PATIENT" },
     });
 
     const { rawToken } = await createSession(user.id, {

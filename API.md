@@ -31,6 +31,7 @@ POST   /api/v1/auth/verify-email/confirm                 (public — token prove
 GET    /api/v1/patients/me
 POST   /api/v1/patients/me                 (create profile)
 PATCH  /api/v1/patients/me                 (update profile)
+PATCH  /api/v1/account/phone               (set or clear the account's phone number — used for SMS notifications)
 
 GET    /api/v1/{medications,conditions,labs,vitals,allergies,immunizations,appointments,care-plans}?patientId=
 POST   /api/v1/{same}                      (create)

@@ -32,6 +32,9 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | `MALWARE_SCAN_PROVIDER` | No (default `clamav`) | `clamav` (default) scans every upload against a real ClamAV daemon and **fails the upload closed** if it can't be reached — see `docs/security-architecture.md` "Malware scanning on upload". `none` is an explicit opt-out (e.g. CI) — resulting documents are honestly marked `SKIPPED`, never `CLEAN`. |
 | `CLAMAV_HOST` | Yes if `MALWARE_SCAN_PROVIDER=clamav` | ClamAV daemon hostname. Local dev: `localhost` (the `docker compose up -d` instance). Production: any ClamAV reachable over TCP. |
 | `CLAMAV_PORT` | No (default `3310`) | ClamAV daemon TCP port |
+| `SMS_PROVIDER` | No (default `console`) | `console` (or unset) logs SMS to server stdout — zero setup, nothing sent. `africastalking` sends real SMS via Africa's Talking — see `docs/ai-architecture.md`'s sibling reasoning and `docs/security-architecture.md`/`docs/privacy/data-map.md` before ever pointing this at a real vendor with real patient phone numbers. |
+| `SMS_API_KEY` / `SMS_USERNAME` | Yes if `SMS_PROVIDER=africastalking` | Your Africa's Talking app credentials. Use `SMS_USERNAME=sandbox` with a sandbox app's key for free testing (routes to Africa's Talking's sandbox API, not the live network) — any other username routes to production. Only read server-side. |
+| `SMS_SENDER_ID` | No | A registered alphanumeric sender ID or short code. Omitted, messages come from Africa's Talking's shared default sender. |
 | `NEXT_PUBLIC_APP_URL` | Yes | Used to build absolute links (e.g. password-reset URLs). `NEXT_PUBLIC_*` vars ARE sent to the browser — never put a secret in one. |
 | `NODE_ENV` | Set by tooling | Standard Next.js env |
 

@@ -17,6 +17,7 @@ Every endpoint lives under `/api/v1/*`. Success and error responses share one sh
 |---|---|
 | `/api/v1/auth` | signup, signin, signout, session, sessions (list/revoke), request-password-reset, reset-password |
 | `/api/v1/patients/me` | profile create/read/update, emergency-access toggle |
+| `/api/v1/account/phone` | set/clear the account's phone number (used for SMS notifications) |
 | `/api/v1/{medications,conditions,labs,vitals,allergies,immunizations,appointments,care-plans}` | list/create, `[id]` update/soft-delete |
 | `/api/v1/corrections` | patient-owned: dispute a provider-verified/non-patient-sourced medication, condition, or lab result (list/create; see security-architecture.md) |
 | `/api/v1/timeline` | filtered, scope-aware, cursor-paginated health events |

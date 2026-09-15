@@ -25,6 +25,7 @@ UI (Server + Client Components)  ──►  /api/v1/* route handlers
 | Auth, authorization, IDOR prevention | [`SECURITY.md`](SECURITY.md) → [`docs/security-architecture.md`](docs/security-architecture.md) |
 | Consent, data ownership, Privacy Center | [`PRIVACY.md`](PRIVACY.md) → [`docs/privacy-architecture.md`](docs/privacy-architecture.md) |
 | AI safety and data-minimization | [`docs/ai-architecture.md`](docs/ai-architecture.md) |
+| Notification channels (in-app/email/SMS), why USSD is deferred | [`docs/notification-architecture.md`](docs/notification-architecture.md) |
 | Future integrations (hospitals, labs, wearables) | [`docs/integration-architecture.md`](docs/integration-architecture.md) |
 | API routes and conventions | [`API.md`](API.md) → [`docs/api-architecture.md`](docs/api-architecture.md) |
 | Navigation, screens, user flows | [`docs/ux/`](docs/ux/) |
