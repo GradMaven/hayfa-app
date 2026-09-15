@@ -78,3 +78,15 @@ describe("allergySchema", () => {
     expect(result.severity).toBe("UNKNOWN");
   });
 });
+
+describe("labResultSchema documentId", () => {
+  it("accepts a real Document id — a UUID, not a cuid (see ocrConfirmSchema for why)", () => {
+    const result = labResultSchema.safeParse({
+      testName: "HbA1c",
+      resultValue: "7.4",
+      testDate: "2026-01-01",
+      documentId: "ab1fa100-9445-429b-8c70-1cd03f03cba3",
+    });
+    expect(result.success).toBe(true);
+  });
+});

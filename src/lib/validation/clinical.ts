@@ -32,7 +32,9 @@ export const labResultSchema = z.object({
   testDate: z.coerce.date(),
   providerName: z.string().trim().max(200).optional(),
   laboratoryName: z.string().trim().max(200).optional(),
-  documentId: z.string().cuid().optional(),
+  // Document.id is a UUID (crypto.randomUUID()), not a cuid — see the
+  // comment on ocrConfirmSchema.documentId in lib/validation/documents.ts.
+  documentId: z.string().uuid().optional(),
 });
 export type LabResultInput = z.infer<typeof labResultSchema>;
 

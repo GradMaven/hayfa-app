@@ -11,7 +11,7 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | Authentication | Built — custom, revocable sessions, TOTP-based MFA with backup codes, email verification (non-blocking) |
 | User Profiles / Patient Health Record | Built |
 | Health Timeline | Built |
-| Documents + OCR (mocked) + malware scanning (real ClamAV) | Built |
+| Documents + OCR + malware scanning (real ClamAV) | Built — OCR mock by default; a real vendor (Anthropic/Claude vision/document input) is wired, off by default, unit-tested but not yet live-API-verified (see ai-architecture.md) |
 | Laboratory Results, Medications, Conditions, Allergies, Immunizations, Vitals, Appointments | Built — includes a patient-initiated correction workflow (§56) for medications/conditions/labs once a record is provider-verified or not patient-sourced, instead of a silent direct overwrite |
 | Chronic Conditions + Care Plans | Built (condition/care-plan CRUD; no clinician-facing care-plan authoring UI yet) |
 | Consent & Permissions, Data Sharing, Emergency Access | Built |

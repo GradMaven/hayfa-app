@@ -36,7 +36,13 @@ export type DocumentMetadataInput = z.infer<typeof documentMetadataSchema>;
 // schema is what the *confirm* step accepts: the user-reviewed values plus
 // which structured record type to create from them.
 export const ocrConfirmSchema = z.object({
-  documentId: z.string().cuid(),
+  // Document.id is generated with crypto.randomUUID() in
+  // src/app/api/v1/documents/route.ts (needed up front to build the storage
+  // key before the row exists) — a real UUID, not a cuid, even though
+  // Document's Prisma default is @default(cuid()) like every other model.
+  // This was `.cuid()` until live verification of the OCR-confirm flow
+  // caught it rejecting every real document's ID with VALIDATION_ERROR.
+  documentId: z.string().uuid(),
   createAs: z.enum(["LAB_RESULT", "NONE"]),
   fields: z.record(z.string(), z.string()),
 });

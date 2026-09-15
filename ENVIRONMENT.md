@@ -21,6 +21,8 @@ Copy [`.env.example`](.env.example) to `.env` for local development. Never commi
 | `AI_PROVIDER` | No (default `mock`) | `mock` (or unset) uses the built-in deterministic mock — no network call, nothing leaves the process. `anthropic` sends requests to the Anthropic API (Claude) via `AI_API_KEY` below — see `docs/ai-architecture.md` before ever pointing this at real patient data. |
 | `AI_API_KEY` | Yes if `AI_PROVIDER=anthropic` | Your Anthropic API key. Only read server-side, never sent to the browser. |
 | `AI_MODEL` | No (default `claude-haiku-4-5-20251001`) | Which Claude model answers AI-feature requests |
+| `OCR_PROVIDER` | No (default `mock`) | `mock` (or unset) uses the built-in deterministic mock — no network call, nothing leaves the process. `anthropic` sends the uploaded document (image or PDF) to Claude's vision/document input for extraction via `AI_API_KEY` above — see `docs/ai-architecture.md`. |
+| `OCR_MODEL` | No (default `claude-sonnet-5`) | Which Claude model answers OCR extraction requests — defaults to a vision-capable model distinct from `AI_MODEL`'s default, since document/image reading benefits from the stronger model even where a fast/cheap model suffices for the text-only AI features |
 | `EMAIL_FROM` | No | The `From` address/display name on every outgoing email (password reset, password-changed confirmation, notifications) |
 | `EMAIL_PROVIDER` | No (default `console`) | `console` logs emails to server stdout (zero setup). `smtp` sends real email via `SMTP_*` below — see `src/lib/email/index.ts`. |
 | `SMTP_HOST` | Yes if `EMAIL_PROVIDER=smtp` | SMTP server hostname. Local dev: `localhost` (Mailpit — see below). Production: your vendor's SMTP host (Amazon SES, SendGrid, Postmark, Mailgun, Gmail, etc.) |
