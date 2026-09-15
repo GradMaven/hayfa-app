@@ -67,9 +67,15 @@ GET    /portal/patients/:patientId         (page, not an API route — provider 
                                              consent.dataScopes; see docs/provider-portal-architecture.md)
 
 POST   /api/v1/auth/provider-signup        (self-serve provider registration — always creates PENDING)
+GET    /api/v1/organizations               (public — verified organizations only, for the signup picker)
 GET    /api/v1/admin/providers?status=     (SUPER_ADMIN only; default status=PENDING)
 POST   /api/v1/admin/providers/:id/verify  (SUPER_ADMIN only)
 POST   /api/v1/admin/providers/:id/reject  (SUPER_ADMIN only — { reason } required)
+PATCH  /api/v1/admin/providers/:id/organization  (SUPER_ADMIN only — assign/clear organization)
+GET    /api/v1/admin/organizations         (SUPER_ADMIN only — all organizations, incl. unverified)
+POST   /api/v1/admin/organizations         (SUPER_ADMIN only — create)
+PATCH  /api/v1/admin/organizations/:id     (SUPER_ADMIN only — update fields, toggle verified)
+DELETE /api/v1/admin/organizations/:id     (SUPER_ADMIN only — soft delete)
 ```
 
 Every route accepting `?patientId=` defaults to the caller's own patient profile when omitted — a patient's own client code never has to know or pass its own ID.

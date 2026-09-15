@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X, ShieldCheck } from "lucide-react";
 import { api, ApiClientError } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label, Textarea, FieldError } from "@/components/ui/input";
+import { Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
@@ -19,10 +19,17 @@ interface ProviderRow {
   specialty: string | null;
   licenseNumber: string | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED" | "UNVERIFIED";
+  organizationId: string | null;
   organizationName: string | null;
   email: string | null;
   phone: string | null;
   registeredAt: string;
+}
+
+interface OrganizationOption {
+  id: string;
+  name: string;
+  verified: boolean;
 }
 
 const STATUS_TABS = [
@@ -92,6 +99,16 @@ function ProviderCard({ provider, onDecided }: { provider: ProviderRow; onDecide
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
+  const [orgSelection, setOrgSelection] = useState(provider.organizationId ?? "");
+
+  useEffect(() => {
+    setOrgSelection(provider.organizationId ?? "");
+  }, [provider.organizationId]);
+
+  const orgsQuery = useQuery({
+    queryKey: ["admin-organizations"],
+    queryFn: () => api.get<OrganizationOption[]>("/api/v1/admin/organizations"),
+  });
 
   const verifyMutation = useMutation({
     mutationFn: () => api.post(`/api/v1/admin/providers/${provider.id}/verify`),
@@ -99,6 +116,11 @@ function ProviderCard({ provider, onDecided }: { provider: ProviderRow; onDecide
   });
   const rejectMutation = useMutation({
     mutationFn: (reason: string) => api.post(`/api/v1/admin/providers/${provider.id}/reject`, { reason }),
+    onSuccess: onDecided,
+  });
+  const assignOrgMutation = useMutation({
+    mutationFn: (organizationId: string | null) =>
+      api.patch(`/api/v1/admin/providers/${provider.id}/organization`, { organizationId }),
     onSuccess: onDecided,
   });
 
@@ -122,10 +144,38 @@ function ProviderCard({ provider, onDecided }: { provider: ProviderRow; onDecide
         </div>
       </div>
 
-      {(verifyMutation.isError || rejectMutation.isError) && (
+      <div className="mt-3 flex items-end gap-2">
+        <div className="flex-1 max-w-xs">
+          <Label htmlFor={`org-${provider.id}`}>Organization</Label>
+          <Select
+            id={`org-${provider.id}`}
+            value={orgSelection}
+            onChange={(e) => setOrgSelection(e.target.value)}
+            disabled={orgsQuery.isLoading}
+          >
+            <option value="">None</option>
+            {orgsQuery.data?.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}{!o.verified ? " (unverified)" : ""}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          loading={assignOrgMutation.isPending}
+          disabled={orgSelection === (provider.organizationId ?? "")}
+          onClick={() => assignOrgMutation.mutate(orgSelection || null)}
+        >
+          Save
+        </Button>
+      </div>
+
+      {(verifyMutation.isError || rejectMutation.isError || assignOrgMutation.isError) && (
         <Alert tone="danger" className="mt-3">
-          {(verifyMutation.error ?? rejectMutation.error) instanceof ApiClientError
-            ? ((verifyMutation.error ?? rejectMutation.error) as ApiClientError).message
+          {(verifyMutation.error ?? rejectMutation.error ?? assignOrgMutation.error) instanceof ApiClientError
+            ? ((verifyMutation.error ?? rejectMutation.error ?? assignOrgMutation.error) as ApiClientError).message
             : "Something went wrong."}
         </Alert>
       )}

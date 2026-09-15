@@ -56,6 +56,21 @@ async function main() {
     },
   });
 
+  // A second, unverified organization — demonstrates the admin
+  // organization-verification workflow (docs/admin-architecture.md) without
+  // needing manually-inserted test data.
+  await db.organization.upsert({
+    where: { id: "demo-org-mombasa-clinic" },
+    update: {},
+    create: {
+      id: "demo-org-mombasa-clinic",
+      name: "Mombasa Coastal Clinic (Demo)",
+      type: "CLINIC",
+      county: "Mombasa",
+      verified: false,
+    },
+  });
+
   const providerUser = await db.user.upsert({
     where: { email: "dr.mwangi.demo@hafya.demo" },
     update: {},
@@ -331,6 +346,7 @@ async function main() {
     update: {},
     create: {
       userId: kariukiUser.id,
+      organizationId: "demo-org-mombasa-clinic",
       fullName: "Dr. Peter Kariuki",
       specialty: "Cardiology",
       licenseNumber: "KMPDC-DEMO-9012",

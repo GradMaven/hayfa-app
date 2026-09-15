@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = providerSignUpSchema.parse(body);
     const phone = input.phone || undefined;
+    const organizationId = input.organizationId || undefined;
 
     const existing = await db.user.findFirst({
       where: { OR: [{ email: input.email }, ...(phone ? [{ phone }] : [])] },
@@ -38,6 +39,13 @@ export async function POST(request: NextRequest) {
       throw new ApiException("CONFLICT", "Could not create an account with those details.");
     }
 
+    if (organizationId) {
+      const org = await db.organization.findUnique({ where: { id: organizationId }, select: { deletedAt: true } });
+      if (!org || org.deletedAt) {
+        throw new ApiException("VALIDATION_ERROR", "That organization could not be found.");
+      }
+    }
+
     const passwordHash = await hashPassword(input.password);
     const user = await db.user.create({
       data: { name: input.name, email: input.email, phone, passwordHash, role: "PROVIDER" },
@@ -45,6 +53,7 @@ export async function POST(request: NextRequest) {
     const provider = await db.healthcareProvider.create({
       data: {
         userId: user.id,
+        organizationId,
         fullName: input.name,
         specialty: input.specialty,
         licenseNumber: input.licenseNumber,

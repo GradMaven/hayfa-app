@@ -5,11 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { providerSignUpSchema, type ProviderSignUpInput } from "@/lib/validation/provider";
 import { api, ApiClientError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Input, Label, FieldError, FieldHint } from "@/components/ui/input";
+import { Input, Label, Select, FieldError, FieldHint } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+
+interface OrganizationOption {
+  id: string;
+  name: string;
+  type: string;
+  county: string | null;
+}
 
 export default function ProviderSignUpPage() {
   const router = useRouter();
@@ -19,6 +27,11 @@ export default function ProviderSignUpPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ProviderSignUpInput>({ resolver: zodResolver(providerSignUpSchema) });
+
+  const orgsQuery = useQuery({
+    queryKey: ["public-organizations"],
+    queryFn: () => api.get<OrganizationOption[]>("/api/v1/organizations"),
+  });
 
   async function onSubmit(values: ProviderSignUpInput) {
     setServerError(null);
@@ -66,6 +79,18 @@ export default function ProviderSignUpPage() {
           <Label htmlFor="specialty">Specialty (optional)</Label>
           <Input id="specialty" placeholder="e.g. Internal Medicine" {...register("specialty")} />
         </div>
+        {orgsQuery.data && orgsQuery.data.length > 0 && (
+          <div>
+            <Label htmlFor="organizationId">Organization (optional)</Label>
+            <Select id="organizationId" {...register("organizationId")}>
+              <option value="">Not affiliated with a listed organization</option>
+              {orgsQuery.data.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </Select>
+            <FieldHint>Only verified organizations are listed. Not listed? You can add this later.</FieldHint>
+          </div>
+        )}
         <div>
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="new-password" {...register("password")} />

@@ -2,15 +2,10 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { Logo } from "@/components/brand/logo";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { AdminNav } from "./admin-nav";
-import { AdminProviderQueue } from "./admin-provider-queue";
+import { AdminNav } from "../admin-nav";
+import { AdminOrganizations } from "./admin-organizations";
 
-// SUPER_ADMIN-only. Deliberately its own minimal shell (not the (app)
-// sidebar, not /portal's) — an admin is neither a patient nor a
-// provider/caregiver, and this surface is scoped narrowly to provider
-// verification only (see docs/admin-architecture.md), not a general admin
-// dashboard.
-export default async function AdminPage() {
+export default async function AdminOrganizationsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin");
   if (user.role !== "SUPER_ADMIN") redirect("/signin");
@@ -25,10 +20,10 @@ export default async function AdminPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
         <AdminNav />
         <p className="mt-4 text-sm text-muted">
-          Review self-registered provider accounts before they can receive patient consent grants. Every decision is
-          logged and the provider is notified either way.
+          Healthcare organizations providers can affiliate with. Only verified organizations are offered at provider
+          registration.
         </p>
-        <AdminProviderQueue />
+        <AdminOrganizations />
       </main>
     </div>
   );

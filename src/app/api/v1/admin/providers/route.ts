@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         specialty: p.specialty,
         licenseNumber: p.licenseNumber,
         verificationStatus: p.verificationStatus,
+        organizationId: p.organizationId,
         organizationName: p.organization?.name ?? null,
         email: p.user.email,
         phone: p.user.phone,
