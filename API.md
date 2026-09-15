@@ -65,6 +65,11 @@ GET    /api/v1/export?patientId=           (full record, JSON)
 GET    /api/v1/portal/overview             (provider/caregiver: patients who've granted access)
 GET    /portal/patients/:patientId         (page, not an API route — provider chart view, scoped to
                                              consent.dataScopes; see docs/provider-portal-architecture.md)
+
+POST   /api/v1/auth/provider-signup        (self-serve provider registration — always creates PENDING)
+GET    /api/v1/admin/providers?status=     (SUPER_ADMIN only; default status=PENDING)
+POST   /api/v1/admin/providers/:id/verify  (SUPER_ADMIN only)
+POST   /api/v1/admin/providers/:id/reject  (SUPER_ADMIN only — { reason } required)
 ```
 
 Every route accepting `?patientId=` defaults to the caller's own patient profile when omitted — a patient's own client code never has to know or pass its own ID.

@@ -7,6 +7,7 @@ Input to a future DPIA (§78). Lists what is collected, why, and where it lives 
 | Category | Fields | Table(s) | Purpose |
 |---|---|---|---|
 | Identity | name, email, phone, password hash | `User` | Authentication, account identification |
+| Provider credentials | specialty, license number, verification status | `HealthcareProvider` | Verifying a provider before they can be granted patient consent — see admin-architecture.md |
 | Demographic | DOB, biological sex, country, county, preferred language | `PatientProfile` | Care context, localization |
 | Sensitive health — conditions | diagnosis, status, severity | `Condition`, `Diagnosis` | Core clinical record |
 | Sensitive health — medications | name, dose, frequency, prescriber | `Medication`, `Prescription` | Core clinical record |

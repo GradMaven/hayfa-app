@@ -5,26 +5,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signUpSchema, type SignUpInput } from "@/lib/validation/auth";
+import { providerSignUpSchema, type ProviderSignUpInput } from "@/lib/validation/provider";
 import { api, ApiClientError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Input, Label, FieldError } from "@/components/ui/input";
+import { Input, Label, FieldError, FieldHint } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 
-export default function SignUpPage() {
+export default function ProviderSignUpPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpInput>({ resolver: zodResolver(signUpSchema) });
+  } = useForm<ProviderSignUpInput>({ resolver: zodResolver(providerSignUpSchema) });
 
-  async function onSubmit(values: SignUpInput) {
+  async function onSubmit(values: ProviderSignUpInput) {
     setServerError(null);
     try {
-      await api.post("/api/v1/auth/signup", values);
-      router.push("/onboarding");
+      await api.post("/api/v1/auth/provider-signup", values);
+      router.push("/portal");
       router.refresh();
     } catch (err) {
       setServerError(err instanceof ApiClientError ? err.message : "Something went wrong. Please try again.");
@@ -33,12 +33,13 @@ export default function SignUpPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-      <p className="mt-1.5 text-sm text-muted">Your health record, brought together and under your control.</p>
+      <h1 className="text-2xl font-semibold tracking-tight">Register as a provider</h1>
+      <p className="mt-1.5 text-sm text-muted">
+        Your registration is reviewed before you can receive patient consent grants. You can sign in and use the
+        portal immediately, but your records will be marked unverified until then.
+      </p>
 
-      {serverError && (
-        <Alert tone="danger" className="mt-5">{serverError}</Alert>
-      )}
+      {serverError && <Alert tone="danger" className="mt-5">{serverError}</Alert>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4" noValidate>
         <div>
@@ -57,11 +58,21 @@ export default function SignUpPage() {
           <FieldError>{errors.phone?.message}</FieldError>
         </div>
         <div>
+          <Label htmlFor="licenseNumber">License number</Label>
+          <Input id="licenseNumber" {...register("licenseNumber")} />
+          <FieldError>{errors.licenseNumber?.message}</FieldError>
+        </div>
+        <div>
+          <Label htmlFor="specialty">Specialty (optional)</Label>
+          <Input id="specialty" placeholder="e.g. Internal Medicine" {...register("specialty")} />
+        </div>
+        <div>
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
           <FieldError>{errors.password?.message}</FieldError>
+          <FieldHint>At least 10 characters.</FieldHint>
         </div>
-        <Button type="submit" className="w-full" loading={isSubmitting}>Create account</Button>
+        <Button type="submit" className="w-full" loading={isSubmitting}>Register</Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted">
@@ -69,8 +80,8 @@ export default function SignUpPage() {
         <Link href="/signin" className="font-medium text-primary hover:underline">Sign in</Link>
       </p>
       <p className="mt-2 text-center text-sm text-muted">
-        Are you a healthcare provider?{" "}
-        <Link href="/provider-signup" className="font-medium text-primary hover:underline">Register here</Link>
+        Signing up as a patient?{" "}
+        <Link href="/signup" className="font-medium text-primary hover:underline">Create a patient account</Link>
       </p>
     </div>
   );

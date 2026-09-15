@@ -50,7 +50,7 @@ Underneath that surface: RBAC scaffold (patient/caregiver/provider/admin roles),
 
 **Architected-for, not built now (explicitly deferred, interfaces only where noted):**
 - Provider portal clinical workflows beyond basic record viewing (§62). (Built in a later session — a per-patient chart scoped to consent.dataScopes, with diagnosis/prescription/care-plan write actions; see [provider-portal-architecture.md](provider-portal-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)
-- Organization/admin dashboards with staff & billing management (§60–61)
+- Organization/admin dashboards with staff & billing management (§60–61). (A narrow slice — SUPER_ADMIN provider verification only — was built in a later session; see [admin-architecture.md](admin-architecture.md). Org management, staff management, and billing remain exactly as described here. This report is a point-in-time snapshot from the original build and is left otherwise unedited.)
 - Real hospital/lab/insurance/wearable integrations — `HealthDataConnector` interface exists, only a mock connector is wired (§36, §87)
 - Billing/subscriptions/entitlements (§58–59) — data model stubbed, no payment provider wired
 - SMS/USSD delivery — `NotificationProvider` interface exists, only in-app/email channel wired (§39–40). (Real SMS — Africa's Talking — was wired in a later session; USSD remains deferred, being architecturally an inbound-session feature rather than a push channel. See [notification-architecture.md](notification-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)

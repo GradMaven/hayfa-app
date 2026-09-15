@@ -295,11 +295,56 @@ async function main() {
     },
   });
 
+  // ── Demo admin: Amara Ochieng ────────────────────────────────────────
+  // No API path exists that lets a client create this role — SUPER_ADMIN
+  // accounts are seed/ops-only. See docs/admin-architecture.md.
+  await db.user.upsert({
+    where: { email: "admin.demo@hafya.demo" },
+    update: {},
+    create: {
+      email: "admin.demo@hafya.demo",
+      name: "Amara Ochieng",
+      passwordHash: demoPasswordHash,
+      role: "SUPER_ADMIN",
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  // ── Demo provider awaiting verification: Dr. Peter Kariuki ────────────
+  // Demonstrates the admin provider-verification queue (docs/admin-architecture.md)
+  // without needing manually-inserted test data — self-registered via the
+  // same POST /api/v1/auth/provider-signup path a real provider would use,
+  // just expressed directly here for repeatable seeding.
+  const kariukiUser = await db.user.upsert({
+    where: { email: "dr.kariuki.demo@hafya.demo" },
+    update: {},
+    create: {
+      email: "dr.kariuki.demo@hafya.demo",
+      name: "Dr. Peter Kariuki",
+      passwordHash: demoPasswordHash,
+      role: "PROVIDER",
+      emailVerifiedAt: new Date(),
+    },
+  });
+  await db.healthcareProvider.upsert({
+    where: { userId: kariukiUser.id },
+    update: {},
+    create: {
+      userId: kariukiUser.id,
+      fullName: "Dr. Peter Kariuki",
+      specialty: "Cardiology",
+      licenseNumber: "KMPDC-DEMO-9012",
+      verificationStatus: "PENDING",
+    },
+  });
+
   console.log("Seed complete.");
   console.log("Demo logins (password: DemoPass123!):");
-  console.log("  Patient:   amina.demo@hafya.demo");
-  console.log("  Provider:  dr.mwangi.demo@hafya.demo");
-  console.log("  Caregiver: peter.demo@hafya.demo");
+  console.log("  Patient:            amina.demo@hafya.demo");
+  console.log("  Provider (verified): dr.mwangi.demo@hafya.demo");
+  console.log("  Provider (pending):  dr.kariuki.demo@hafya.demo");
+  console.log("  Caregiver:          peter.demo@hafya.demo");
+  console.log("  Admin:              admin.demo@hafya.demo");
 }
 
 main()

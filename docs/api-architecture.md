@@ -32,8 +32,10 @@ Every endpoint lives under `/api/v1/*`. Success and error responses share one sh
 | `/api/v1/notifications` | list, mark-read |
 | `/api/v1/portal/overview` | provider/caregiver "who's granted you access" (see below) |
 | `/portal/patients/[patientId]` (page, not `/api/v1`) | provider-only chart view — see [provider-portal-architecture.md](provider-portal-architecture.md); re-derives its own auth from an active `Consent` rather than a dedicated API route |
+| `/api/v1/auth/provider-signup` | self-serve provider registration (always `PENDING`) |
+| `/api/v1/admin/providers` | `SUPER_ADMIN`-only provider verification queue — see [admin-architecture.md](admin-architecture.md) |
 
-Every one of these (aside from `/auth/*` and the two password-reset routes) sits behind `requireUser()` at minimum, and every patient-scoped one behind `canAccess()` — see [security-architecture.md](security-architecture.md) — **except** `/consents`, `/caregivers`, and `/corrections`, which are direct ownership checks (`actor.patientProfileId === patientId`) rather than `canAccess()`, since granting access or disputing your own record is an owner-only action, not something being "accessed."
+Every one of these (aside from `/auth/*` and the two password-reset routes) sits behind `requireUser()` at minimum, and every patient-scoped one behind `canAccess()` — see [security-architecture.md](security-architecture.md) — **except** `/consents`, `/caregivers`, and `/corrections`, which are direct ownership checks (`actor.patientProfileId === patientId`) rather than `canAccess()`, since granting access or disputing your own record is an owner-only action, not something being "accessed." `/admin/providers` is a different case again: it's not patient-scoped at all (it administers `HealthcareProvider`/`User` account records), so `requireRole("SUPER_ADMIN")` alone is the correct check — see [admin-architecture.md](admin-architecture.md).
 
 ## Why `/api/v1/portal/overview` exists
 

@@ -58,7 +58,7 @@ The one deliberate exception: `/portal/patients/[patientId]` (the Provider Porta
 
 ## Administrative privilege ≠ clinical-data privilege (§6, §105)
 
-No route in this phase grants an admin role implicit access to patient clinical data. The admin surface (user management, provider verification, platform config) is out of MVP scope (see [discovery-report.md](discovery-report.md)); when it's built, it must call `canAccess()` like every other actor, or go through a separately-audited support-access flow — never a silent bypass.
+No route in this phase grants an admin role implicit access to patient clinical data. Provider verification (`SUPER_ADMIN` reviewing/approving `HealthcareProvider` registrations) is built — see [admin-architecture.md](admin-architecture.md) — and it doesn't touch this boundary at all: `HealthcareProvider`/`User` are account/identity records, not clinical data, so `requireRole()` alone is the correct, sufficient check for them. The rest of the admin surface (user suspension, organization management, platform config) remains out of scope; when it's built, anything that touches patient-scoped data must call `canAccess()` like every other actor, or go through a separately-audited support-access flow — never a silent bypass.
 
 ## Emergency access is not a backdoor (§29)
 

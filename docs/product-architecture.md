@@ -19,14 +19,16 @@ A patient-centered health-data platform, not a hospital management system, appoi
 | Audit Logs | Built |
 | AI Health Insights | Built — mock provider by default; a real vendor (Anthropic/Claude) is wired and verified against the live API, off by default |
 | Provider Portal | Built — patient list, a per-patient chart view scoped to exactly the consented record categories, and clinical-workflow write actions (diagnoses, prescriptions, care plans) — see [provider-portal-architecture.md](provider-portal-architecture.md) |
-| Admin Portal, Organizations, Subscription/Billing, Analytics, full Integrations, API Platform | Not built — schema/interfaces exist where noted in their respective docs |
+| Admin Portal | Provider verification only — a `SUPER_ADMIN` reviews/approves/rejects self-registered providers, see [admin-architecture.md](admin-architecture.md). User management, org management, platform config remain not built. |
+| Organizations, Subscription/Billing, Analytics, full Integrations, API Platform | Not built — schema/interfaces exist where noted in their respective docs |
 
 ## User types and what they can actually do today
 
 - **Patient**: the fully-built experience — profile, timeline, documents, all clinical modules, sharing, privacy center, sessions.
 - **Caregiver**: backend fully modeled (`CaregiverLink`, scoped permissions enforced by `canAccess()`); UI is still the minimal `/portal` overview listing which patients granted access, not a full record browser — the Provider Portal buildout below was scoped to providers only.
-- **Provider**: the Provider Portal (`/portal/patients/[patientId]`) gives a verified, consented provider a real per-patient chart — read access to exactly the record categories the patient's `Consent.dataScopes` names, plus the ability to add diagnoses, prescribe medications, and create care plans, all landing with `source: PROVIDER_ENTERED`/`verificationStatus: PROVIDER_VERIFIED` and a `DataAccessLog` entry the patient can see. Also `POST /api/v1/emergency-access` for the policy-based, consent-independent emergency path. See [provider-portal-architecture.md](provider-portal-architecture.md).
-- **Organization / Administrator**: data model exists (`Organization`, roles in `UserRole`); no dashboard, staff management, or admin tooling is built.
+- **Provider**: the Provider Portal (`/portal/patients/[patientId]`) gives a verified, consented provider a real per-patient chart — read access to exactly the record categories the patient's `Consent.dataScopes` names, plus the ability to add diagnoses, prescribe medications, and create care plans, all landing with `source: PROVIDER_ENTERED`/`verificationStatus: PROVIDER_VERIFIED` and a `DataAccessLog` entry the patient can see. Also `POST /api/v1/emergency-access` for the policy-based, consent-independent emergency path. A provider self-registers (`/provider-signup`) and starts `PENDING` until an admin approves them. See [provider-portal-architecture.md](provider-portal-architecture.md).
+- **Admin (`SUPER_ADMIN`)**: `/admin` — reviews and approves/rejects pending provider registrations. That's the entire admin surface today; no user suspension, no organization management, no platform config. See [admin-architecture.md](admin-architecture.md).
+- **Organization**: data model exists (`Organization`); no dashboard, staff management, or org-admin tooling is built.
 
 ## Golden path (§99 Step 6) — fully working end to end
 
