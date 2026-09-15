@@ -21,8 +21,8 @@ export default async function PortalPage() {
         </h1>
         <p className="mt-1.5 text-sm text-muted">
           {user.role === "PROVIDER"
-            ? "The full provider portal — clinical notes, prescriptions, care plans — is coming in a later phase. For now, here are the patients who have granted you access."
-            : "The full caregiver view is coming in a later phase. For now, here's who has added you as a caregiver, and what you're authorized to see."}
+            ? "Patients who have granted you access. Open a patient to view their record and add diagnoses, prescriptions, or care plans within what they've shared."
+            : "Patients who have added you as a caregiver, and what you're authorized to see. A full caregiver record-browsing view is coming in a later phase."}
         </p>
         <PortalOverview role={user.role} />
       </main>

@@ -61,6 +61,10 @@ POST   /api/v1/consents/:id/revoke
 
 GET    /api/v1/audit?patientId=            (access history)
 GET    /api/v1/export?patientId=           (full record, JSON)
+
+GET    /api/v1/portal/overview             (provider/caregiver: patients who've granted access)
+GET    /portal/patients/:patientId         (page, not an API route — provider chart view, scoped to
+                                             consent.dataScopes; see docs/provider-portal-architecture.md)
 ```
 
 Every route accepting `?patientId=` defaults to the caller's own patient profile when omitted — a patient's own client code never has to know or pass its own ID.

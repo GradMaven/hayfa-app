@@ -49,7 +49,7 @@ Account creation → patient health profile → document upload (with mocked OCR
 Underneath that surface: RBAC scaffold (patient/caregiver/provider/admin roles), a centralized consent-engine (`canAccess()`), an append-only audit-event writer, Zod validation on every write endpoint, and object-level authorization checked server-side on every patient-scoped route (never inferred from the URL alone).
 
 **Architected-for, not built now (explicitly deferred, interfaces only where noted):**
-- Provider portal clinical workflows beyond basic record viewing (§62)
+- Provider portal clinical workflows beyond basic record viewing (§62). (Built in a later session — a per-patient chart scoped to consent.dataScopes, with diagnosis/prescription/care-plan write actions; see [provider-portal-architecture.md](provider-portal-architecture.md). This report is a point-in-time snapshot from the original build and is left otherwise unedited.)
 - Organization/admin dashboards with staff & billing management (§60–61)
 - Real hospital/lab/insurance/wearable integrations — `HealthDataConnector` interface exists, only a mock connector is wired (§36, §87)
 - Billing/subscriptions/entitlements (§58–59) — data model stubbed, no payment provider wired

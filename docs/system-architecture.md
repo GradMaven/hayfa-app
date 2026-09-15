@@ -63,6 +63,9 @@ hafya-app/
         privacy/                  Privacy Center
         profile/
         settings/
+      portal/                       provider/caregiver shell (not the (app) sidebar — own minimal header)
+        page.tsx                    patient list (who granted this actor access)
+        patients/[patientId]/       provider-only chart view — see docs/provider-portal-architecture.md
       api/v1/
         auth/[...nextauth]/
         patients/

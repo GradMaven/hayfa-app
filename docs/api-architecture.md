@@ -31,12 +31,13 @@ Every endpoint lives under `/api/v1/*`. Success and error responses share one sh
 | `/api/v1/dashboard/summary` | one aggregate call for the Home dashboard |
 | `/api/v1/notifications` | list, mark-read |
 | `/api/v1/portal/overview` | provider/caregiver "who's granted you access" (see below) |
+| `/portal/patients/[patientId]` (page, not `/api/v1`) | provider-only chart view — see [provider-portal-architecture.md](provider-portal-architecture.md); re-derives its own auth from an active `Consent` rather than a dedicated API route |
 
 Every one of these (aside from `/auth/*` and the two password-reset routes) sits behind `requireUser()` at minimum, and every patient-scoped one behind `canAccess()` — see [security-architecture.md](security-architecture.md) — **except** `/consents`, `/caregivers`, and `/corrections`, which are direct ownership checks (`actor.patientProfileId === patientId`) rather than `canAccess()`, since granting access or disputing your own record is an owner-only action, not something being "accessed."
 
 ## Why `/api/v1/portal/overview` exists
 
-The brief's provider/organization/admin dashboards (§60–63) are out of this phase's scope (see [discovery-report.md](discovery-report.md)), but a provider or caregiver still needs to sign in to *something* real rather than a broken dashboard built for patients. This one small endpoint returns the patients who've granted that actor consent/caregiver access — real data already in the schema, honestly scoped, not a stub.
+The brief's organization/admin dashboards (§60, §63) are out of this phase's scope (see [discovery-report.md](discovery-report.md)), but a provider or caregiver still needs to sign in to *something* real. This one small endpoint returns the patients who've granted that actor consent/caregiver access — real data already in the schema, honestly scoped, not a stub. For providers, each row links into `/portal/patients/[patientId]`, a full chart view with clinical-workflow write actions — see [provider-portal-architecture.md](provider-portal-architecture.md). Caregivers still get only this list, not a record browser.
 
 ## Request validation
 

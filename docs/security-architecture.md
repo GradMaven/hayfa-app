@@ -50,6 +50,8 @@ TOTP-based (RFC 6238), compatible with any standard authenticator app — no pro
 
 Every route handler that accepts a resource `:id` first loads the record to discover its `patientId`, then calls `authorizePatientAccess()` — it never trusts a `patientId` supplied by the client for anything other than the initial lookup.
 
+The one deliberate exception: `/portal/patients/[patientId]` (the Provider Portal's chart view — see [provider-portal-architecture.md](provider-portal-architecture.md)) gates basic patient identity fields (name, age, blood type) on **any** active consent existing for that provider+patient pair, not a specific `dataScope`, since there's no grantable "profile" scope in this product's model and knowing who you're treating is baseline clinical context for any legitimate relationship — the same reasoning `POST /api/v1/emergency-access`'s fixed minimal dataset already applies. It still re-derives the consent from the database on every load and writes a `DataAccessLog` row; it just isn't a `canAccess()` call, because there's no `DataScope` to check it against.
+
 ## RBAC (§42)
 
 `User.role` (`PATIENT`, `CAREGIVER`, `PROVIDER`, `PROVIDER_ADMIN`, `ORG_ADMIN`, `INTEGRATION_ADMIN`, `PLATFORM_SUPPORT`, `SUPER_ADMIN`) gates which endpoints a role can call at all (`requireRole()`). It is intentionally coarse — the actual "can you see *this* patient's *this* data" decision is always the object-level check above, never inferred from role alone. Administrative roles are **not** wired to bypass `canAccess()` anywhere in this codebase — see "Administrative privilege ≠ clinical-data privilege" below.
