@@ -121,194 +121,207 @@ async function main() {
     },
   });
 
-  // ── Condition: Hypertension ──────────────────────────────────────────
-  const hypertension = await db.condition.create({
-    data: {
-      patientId: patient.id,
-      name: "Hypertension",
-      category: "hypertension",
-      dateDiagnosed: new Date("2026-08-10"),
-      status: "MANAGED",
-      severity: "MODERATE",
-      providerId: provider.id,
-      source: "PROVIDER_ENTERED",
-      verificationStatus: "PROVIDER_VERIFIED",
-    },
-  });
-  await db.healthEvent.create({
-    data: {
-      patientId: patient.id,
-      type: "DIAGNOSIS",
-      title: "Diagnosed: Hypertension",
-      eventDate: hypertension.dateDiagnosed!,
-      sourceEntityType: "Condition",
-      sourceEntityId: hypertension.id,
-    },
-  });
-
-  // ── Medication: Amlodipine ────────────────────────────────────────────
-  const medication = await db.medication.create({
-    data: {
-      patientId: patient.id,
-      name: "Amlodipine",
-      dose: "5mg",
-      frequency: "Once daily",
-      route: "Oral",
-      startDate: new Date("2026-08-10"),
-      prescriberId: provider.id,
-      purpose: "Blood pressure control",
-      relatedConditionId: hypertension.id,
-      status: "ACTIVE",
-      source: "PROVIDER_ENTERED",
-      verificationStatus: "PROVIDER_VERIFIED",
-    },
-  });
-  await db.healthEvent.create({
-    data: {
-      patientId: patient.id,
-      type: "MEDICATION",
-      title: "Started: Amlodipine 5mg",
-      eventDate: medication.startDate!,
-      sourceEntityType: "Medication",
-      sourceEntityId: medication.id,
-    },
-  });
-
-  await db.carePlan.create({
-    data: {
-      patientId: patient.id,
-      conditionId: hypertension.id,
-      providerId: provider.id,
-      title: "Hypertension management",
-      goal: "Monitor blood pressure daily; follow up in 6 weeks; maintain sodium-reduced diet.",
-      status: "ACTIVE",
-    },
-  });
-
-  // ── Lab results: HbA1c trend ──────────────────────────────────────────
-  const labPoints: [string, string][] = [
-    ["2026-01-15", "8.2"],
-    ["2026-04-10", "7.8"],
-    ["2026-07-22", "7.4"],
-  ];
-  for (const [date, value] of labPoints) {
-    const lab = await db.labResult.create({
+  // The clinical dataset below (condition through consent) uses plain
+  // .create() calls, not upsert — there's no natural unique key to upsert
+  // a Condition/LabResult/Vital/etc. against, unlike User/Organization
+  // above. Re-running this script without a guard would duplicate the
+  // entire dataset every time (confirmed live: three seed runs in one
+  // session left three copies of every record). This one check makes the
+  // whole block idempotent instead of giving every model its own
+  // hand-assigned fixed id.
+  const hasClinicalData = await db.condition.findFirst({ where: { patientId: patient.id } });
+  if (hasClinicalData) {
+    console.log("Clinical demo data already seeded for this patient — skipping (safe to re-run).");
+  } else {
+    // ── Condition: Hypertension ──────────────────────────────────────────
+    const hypertension = await db.condition.create({
       data: {
         patientId: patient.id,
-        testName: "HbA1c",
-        resultValue: value,
-        unit: "%",
-        referenceRange: "<5.7%",
-        flag: "HIGH",
-        testDate: new Date(date),
-        laboratoryName: "Nairobi Hospital Lab (Demo)",
-        source: "LAB_INTEGRATION",
+        name: "Hypertension",
+        category: "hypertension",
+        dateDiagnosed: new Date("2026-08-10"),
+        status: "MANAGED",
+        severity: "MODERATE",
+        providerId: provider.id,
+        source: "PROVIDER_ENTERED",
         verificationStatus: "PROVIDER_VERIFIED",
       },
     });
     await db.healthEvent.create({
       data: {
         patientId: patient.id,
-        type: "LAB",
-        title: `Lab result: HbA1c ${value}%`,
-        eventDate: lab.testDate,
-        sourceEntityType: "LabResult",
-        sourceEntityId: lab.id,
+        type: "DIAGNOSIS",
+        title: "Diagnosed: Hypertension",
+        eventDate: hypertension.dateDiagnosed!,
+        sourceEntityType: "Condition",
+        sourceEntityId: hypertension.id,
       },
     });
-  }
 
-  // ── Vitals: blood pressure trend ─────────────────────────────────────
-  const vitalPoints: [string, number, number][] = [
-    ["2026-08-10", 148, 94],
-    ["2026-08-24", 142, 90],
-    ["2026-09-07", 134, 86],
-  ];
-  for (const [date, sys, dia] of vitalPoints) {
-    await db.vital.create({
+    // ── Medication: Amlodipine ────────────────────────────────────────────
+    const medication = await db.medication.create({
       data: {
         patientId: patient.id,
-        type: "BLOOD_PRESSURE",
-        value: sys,
-        secondaryValue: dia,
-        unit: "mmHg",
-        recordedAt: new Date(date),
+        name: "Amlodipine",
+        dose: "5mg",
+        frequency: "Once daily",
+        route: "Oral",
+        startDate: new Date("2026-08-10"),
+        prescriberId: provider.id,
+        purpose: "Blood pressure control",
+        relatedConditionId: hypertension.id,
+        status: "ACTIVE",
+        source: "PROVIDER_ENTERED",
+        verificationStatus: "PROVIDER_VERIFIED",
+      },
+    });
+    await db.healthEvent.create({
+      data: {
+        patientId: patient.id,
+        type: "MEDICATION",
+        title: "Started: Amlodipine 5mg",
+        eventDate: medication.startDate!,
+        sourceEntityType: "Medication",
+        sourceEntityId: medication.id,
+      },
+    });
+
+    await db.carePlan.create({
+      data: {
+        patientId: patient.id,
+        conditionId: hypertension.id,
+        providerId: provider.id,
+        title: "Hypertension management",
+        goal: "Monitor blood pressure daily; follow up in 6 weeks; maintain sodium-reduced diet.",
+        status: "ACTIVE",
+      },
+    });
+
+    // ── Lab results: HbA1c trend ──────────────────────────────────────────
+    const labPoints: [string, string][] = [
+      ["2026-01-15", "8.2"],
+      ["2026-04-10", "7.8"],
+      ["2026-07-22", "7.4"],
+    ];
+    for (const [date, value] of labPoints) {
+      const lab = await db.labResult.create({
+        data: {
+          patientId: patient.id,
+          testName: "HbA1c",
+          resultValue: value,
+          unit: "%",
+          referenceRange: "<5.7%",
+          flag: "HIGH",
+          testDate: new Date(date),
+          laboratoryName: "Nairobi Hospital Lab (Demo)",
+          source: "LAB_INTEGRATION",
+          verificationStatus: "PROVIDER_VERIFIED",
+        },
+      });
+      await db.healthEvent.create({
+        data: {
+          patientId: patient.id,
+          type: "LAB",
+          title: `Lab result: HbA1c ${value}%`,
+          eventDate: lab.testDate,
+          sourceEntityType: "LabResult",
+          sourceEntityId: lab.id,
+        },
+      });
+    }
+
+    // ── Vitals: blood pressure trend ─────────────────────────────────────
+    const vitalPoints: [string, number, number][] = [
+      ["2026-08-10", 148, 94],
+      ["2026-08-24", 142, 90],
+      ["2026-09-07", 134, 86],
+    ];
+    for (const [date, sys, dia] of vitalPoints) {
+      await db.vital.create({
+        data: {
+          patientId: patient.id,
+          type: "BLOOD_PRESSURE",
+          value: sys,
+          secondaryValue: dia,
+          unit: "mmHg",
+          recordedAt: new Date(date),
+          source: "PATIENT_ENTERED",
+        },
+      });
+    }
+
+    // ── Allergy ───────────────────────────────────────────────────────────
+    const allergy = await db.allergy.create({
+      data: {
+        patientId: patient.id,
+        allergen: "Penicillin",
+        reaction: "Skin rash",
+        severity: "MODERATE",
+        notedDate: new Date("2015-03-01"),
         source: "PATIENT_ENTERED",
       },
     });
-  }
+    void allergy;
 
-  // ── Allergy ───────────────────────────────────────────────────────────
-  const allergy = await db.allergy.create({
-    data: {
-      patientId: patient.id,
-      allergen: "Penicillin",
-      reaction: "Skin rash",
-      severity: "MODERATE",
-      notedDate: new Date("2015-03-01"),
-      source: "PATIENT_ENTERED",
-    },
-  });
-  void allergy;
+    // ── Immunization ──────────────────────────────────────────────────────
+    const immunization = await db.immunization.create({
+      data: {
+        patientId: patient.id,
+        vaccineName: "Tetanus-Diphtheria (Td)",
+        administeredDate: new Date("2026-06-01"),
+        providerName: "Nairobi Hospital (Demo)",
+        source: "PROVIDER_ENTERED",
+        verificationStatus: "PROVIDER_VERIFIED",
+      },
+    });
+    await db.healthEvent.create({
+      data: {
+        patientId: patient.id,
+        type: "IMMUNIZATION",
+        title: "Immunization: Tetanus-Diphtheria (Td)",
+        eventDate: immunization.administeredDate,
+        sourceEntityType: "Immunization",
+        sourceEntityId: immunization.id,
+      },
+    });
 
-  // ── Immunization ──────────────────────────────────────────────────────
-  const immunization = await db.immunization.create({
-    data: {
-      patientId: patient.id,
-      vaccineName: "Tetanus-Diphtheria (Td)",
-      administeredDate: new Date("2026-06-01"),
-      providerName: "Nairobi Hospital (Demo)",
-      source: "PROVIDER_ENTERED",
-      verificationStatus: "PROVIDER_VERIFIED",
-    },
-  });
-  await db.healthEvent.create({
-    data: {
-      patientId: patient.id,
-      type: "IMMUNIZATION",
-      title: "Immunization: Tetanus-Diphtheria (Td)",
-      eventDate: immunization.administeredDate,
-      sourceEntityType: "Immunization",
-      sourceEntityId: immunization.id,
-    },
-  });
+    // ── Appointment ───────────────────────────────────────────────────────
+    const appointment = await db.appointment.create({
+      data: {
+        patientId: patient.id,
+        providerId: provider.id,
+        scheduledAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        reason: "Hypertension follow-up",
+        location: "Nairobi Hospital, Outpatient Clinic 2",
+        status: "SCHEDULED",
+      },
+    });
+    await db.healthEvent.create({
+      data: {
+        patientId: patient.id,
+        type: "APPOINTMENT",
+        title: "Upcoming: Hypertension follow-up",
+        eventDate: appointment.scheduledAt,
+        sourceEntityType: "Appointment",
+        sourceEntityId: appointment.id,
+      },
+    });
 
-  // ── Appointment ───────────────────────────────────────────────────────
-  const appointment = await db.appointment.create({
-    data: {
-      patientId: patient.id,
-      providerId: provider.id,
-      scheduledAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      reason: "Hypertension follow-up",
-      location: "Nairobi Hospital, Outpatient Clinic 2",
-      status: "SCHEDULED",
-    },
-  });
-  await db.healthEvent.create({
-    data: {
-      patientId: patient.id,
-      type: "APPOINTMENT",
-      title: "Upcoming: Hypertension follow-up",
-      eventDate: appointment.scheduledAt,
-      sourceEntityType: "Appointment",
-      sourceEntityId: appointment.id,
-    },
-  });
-
-  // ── Consent: Dr. Mwangi has 30-day access to diabetes-related records ──
-  await db.consent.create({
-    data: {
-      patientId: patient.id,
-      recipientType: "PROVIDER",
-      recipientUserId: providerUser.id,
-      recipientLabel: "Dr. Jane Mwangi",
-      purpose: "Hypertension consultation",
-      dataScopes: ["MEDICATIONS", "LAB_RESULTS", "CONDITIONS", "VITALS"],
-      duration: "DAYS_30",
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      status: "ACTIVE",
-    },
-  });
+    // ── Consent: Dr. Mwangi has 30-day access to diabetes-related records ──
+    await db.consent.create({
+      data: {
+        patientId: patient.id,
+        recipientType: "PROVIDER",
+        recipientUserId: providerUser.id,
+        recipientLabel: "Dr. Jane Mwangi",
+        purpose: "Hypertension consultation",
+        dataScopes: ["MEDICATIONS", "LAB_RESULTS", "CONDITIONS", "VITALS"],
+        duration: "DAYS_30",
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        status: "ACTIVE",
+      },
+    });
+  } // end hasClinicalData guard
 
   // ── Demo admin: Amara Ochieng ────────────────────────────────────────
   // No API path exists that lets a client create this role — SUPER_ADMIN
