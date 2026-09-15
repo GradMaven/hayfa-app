@@ -1,8 +1,8 @@
 # Admin Architecture
 
-## Scope: provider verification + organization management
+## Scope: provider verification + organization management + user account administration
 
-`product-architecture.md` previously bucketed "Admin Portal, Organizations, Subscription/Billing, Analytics, full Integrations, API Platform" together as "Not built." This is deliberately **not** a general admin dashboard — two narrow, concrete capabilities: reviewing and approving/rejecting self-registered provider accounts, and managing the `Organization` rows a provider can affiliate with. `UserRole` already models `ORG_ADMIN`, `INTEGRATION_ADMIN`, and `PLATFORM_SUPPORT` (only `SUPER_ADMIN` is used so far), and `Subscription`/`Integration` already exist in the schema, but none of that is wired to anything yet — user (account) suspension, billing, analytics, and full third-party integrations all remain out of scope. See "What's deferred" below.
+`product-architecture.md` previously bucketed "Admin Portal, Organizations, Subscription/Billing, Analytics, full Integrations, API Platform" together as "Not built." This is deliberately **not** a general admin dashboard — three narrow, concrete capabilities: reviewing and approving/rejecting self-registered provider accounts, managing the `Organization` rows a provider can affiliate with, and administering `User` accounts (view, suspend, deactivate, reactivate). `UserRole` already models `ORG_ADMIN`, `INTEGRATION_ADMIN`, and `PLATFORM_SUPPORT` (only `SUPER_ADMIN` is used so far), and `Subscription`/`Integration` already exist in the schema, but none of that is wired to anything yet — billing, analytics, and full third-party integrations all remain out of scope. See "What's deferred" below.
 
 ## Why this needed a registration flow, not just a review queue
 
@@ -35,13 +35,22 @@ POST /api/v1/admin/organizations            create (defaults verified: false, sa
                                              verification; that's still a second, explicit step)
 PATCH /api/v1/admin/organizations/:id       update name/type/county, toggle verified
 DELETE /api/v1/admin/organizations/:id      soft delete
+
+GET  /admin/users                           SUPER_ADMIN user list (search + role/status filters)
+GET  /api/v1/admin/users?role=&status=&search=  list accounts — never returns passwordHash, never
+                                                 joins anything patient-scoped
+PATCH /api/v1/admin/users/:id/status        { status, reason? } → ACTIVE | SUSPENDED | DEACTIVATED
 ```
 
-Every admin decision writes an `AuditEvent` (`PROVIDER_VERIFIED`/`PROVIDER_REJECTED`/`PROVIDER_ORGANIZATION_ASSIGNED`/`ORGANIZATION_CREATED`/`ORGANIZATION_UPDATED`/`ORGANIZATION_DELETED`, actor = the admin) and, for provider verify/reject, calls `notify()` so the provider is never left wondering — the same notification infrastructure every other feature in this codebase uses (in-app + email, SMS if `NEXT_PUBLIC_ENABLE_SMS` is on and they have a phone).
+Every admin decision writes an `AuditEvent` (`PROVIDER_VERIFIED`/`PROVIDER_REJECTED`/`PROVIDER_ORGANIZATION_ASSIGNED`/`ORGANIZATION_CREATED`/`ORGANIZATION_UPDATED`/`ORGANIZATION_DELETED`/`USER_STATUS_CHANGED`, actor = the admin) and, for provider verify/reject and user status changes, calls `notify()` so the affected person is never left wondering — the same notification infrastructure every other feature in this codebase uses (in-app + email, SMS if `NEXT_PUBLIC_ENABLE_SMS` is on and they have a phone).
+
+## User status was already enforced everywhere — this only needed to expose it
+
+Unlike the provider-verification and organization work, this required **no new enforcement**: `POST /api/v1/auth/signin` already rejected a non-`ACTIVE` account with the same generic "Incorrect email or password" message used for a wrong password (never leaking *why* the account can't sign in), and `validateSessionToken()` ([`src/lib/auth/session.ts`](../src/lib/auth/session.ts)) already invalidated a non-`ACTIVE` user's session on its very next request — both pre-existing, unmodified code. `PATCH /api/v1/admin/users/:id/status` only had to flip the flag; it additionally, proactively revokes every one of that user's active `Session` rows (`revokedAt: new Date()`) as a belt-and-braces measure rather than relying solely on the next-request check to catch it. A `SUPER_ADMIN` cannot change their own status (self-lockout protection, checked server-side, not just hidden in the UI).
 
 ## Why `requireRole("SUPER_ADMIN")` alone is sufficient here, unlike patient data
 
-[security-architecture.md](security-architecture.md) states: *"No route in this phase grants an admin role implicit access to patient clinical data... must call `canAccess()` like every other actor."* This still holds — nothing here reads or writes anything patient-scoped. `HealthcareProvider`, `Organization`, and `User` are account/identity/institutional records, not clinical data; role-based gating is the correct and sufficient check for administering them, the same way it's sufficient for a user managing their own account settings. Extending admin capability to anything patient-scoped in the future must go through `canAccess()` or a separately-audited support-access flow, never a role check alone — this pass doesn't touch that boundary at all.
+[security-architecture.md](security-architecture.md) states: *"No route in this phase grants an admin role implicit access to patient clinical data... must call `canAccess()` like every other actor."* This still holds — nothing here reads or writes anything patient-scoped. `HealthcareProvider`, `Organization`, and `User` are account/identity/institutional records, not clinical data; role-based gating is the correct and sufficient check for administering them, the same way it's sufficient for a user managing their own account settings. Suspending or deactivating a `PATIENT` account is account administration (can this person sign in at all), not clinical-data access (it never reads their records) — `GET /api/v1/admin/users` explicitly selects only identity fields, never anything from `PatientProfile` or its clinical relations. Extending admin capability to anything patient-scoped in the future must go through `canAccess()` or a separately-audited support-access flow, never a role check alone — this pass doesn't touch that boundary at all.
 
 ## A real bug this surfaced and fixed: `.cuid()` validation on non-cuid ids
 
@@ -59,9 +68,10 @@ Provider verification: signed in as the seeded admin, confirmed the queue's Pend
 
 Organization management: confirmed both seeded organizations rendered correctly on `/admin/organizations` with accurate provider counts and verified/unverified badges; toggled Mombasa Coastal Clinic's verified flag on and off through the UI; hit and fixed the `.cuid()` bug above while testing provider-organization reassignment through the queue's inline picker, then confirmed the fix by reassigning Dr. Kariuki to Nairobi Hospital and back through the actual UI (not just the API); confirmed the public `GET /api/v1/organizations` endpoint correctly excludes the unverified organization; registered a real test provider through the signup flow with an organization selected from that public list and confirmed the affiliation landed correctly in the database. All test accounts and their audit trails removed afterward; both organizations and both demo providers restored to their exact seed-defined state.
 
+User account management: signed in as the seeded caregiver (Peter Otieno) to establish a real active session; switched to the admin, suspended his account with a reason through the UI; confirmed directly in the database that his `Session` row was revoked (`revokedAt` set) as a result of the new proactive-revocation code; confirmed `POST /api/v1/auth/signin` rejected his credentials with the same generic "Incorrect email or password" message used for any other failure (no status leaked); confirmed the suspension reason landed in his notification email (Mailpit); reactivated him through the UI and confirmed he could sign in again; confirmed the self-status-change guard rejects an admin's own id with `422 VALIDATION_ERROR`. All test audit events and notifications removed afterward; the account restored to its original `ACTIVE` state.
+
 ## What's deferred
 
-- User account management (view all accounts, suspend/deactivate via `User.status`) — nothing reads or writes `UserStatus` yet.
 - A platform-wide audit dashboard (a UI over `AuditEvent` across all users, as opposed to querying it directly as done for verification above).
 - Organization staff management beyond the single provider↔organization link (no concept of an org-level admin managing their own org's roster — that's what `ORG_ADMIN` would be for).
 - `ORG_ADMIN`, `INTEGRATION_ADMIN`, `PLATFORM_SUPPORT` roles remain modeled but unused anywhere in the codebase.

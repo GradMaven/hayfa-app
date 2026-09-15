@@ -66,9 +66,11 @@ hafya-app/
       portal/                       provider/caregiver shell (not the (app) sidebar — own minimal header)
         page.tsx                    patient list (who granted this actor access)
         patients/[patientId]/       provider-only chart view — see docs/provider-portal-architecture.md
-      admin/                        SUPER_ADMIN shell — provider verification + organization
-                                     management, see docs/admin-architecture.md
+      admin/                        SUPER_ADMIN shell — provider verification, organization
+                                     management, user account administration; see
+                                     docs/admin-architecture.md
         organizations/               organization CRUD + verification
+        users/                       account list + suspend/deactivate/reactivate
       api/v1/
         auth/[...nextauth]/
         patients/

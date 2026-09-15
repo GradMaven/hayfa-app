@@ -76,6 +76,9 @@ GET    /api/v1/admin/organizations         (SUPER_ADMIN only — all organizatio
 POST   /api/v1/admin/organizations         (SUPER_ADMIN only — create)
 PATCH  /api/v1/admin/organizations/:id     (SUPER_ADMIN only — update fields, toggle verified)
 DELETE /api/v1/admin/organizations/:id     (SUPER_ADMIN only — soft delete)
+GET    /api/v1/admin/users?role=&status=&search=  (SUPER_ADMIN only — account list, no passwordHash,
+                                                    nothing patient-scoped)
+PATCH  /api/v1/admin/users/:id/status      (SUPER_ADMIN only — { status, reason? }; can't target self)
 ```
 
 Every route accepting `?patientId=` defaults to the caller's own patient profile when omitted — a patient's own client code never has to know or pass its own ID.
