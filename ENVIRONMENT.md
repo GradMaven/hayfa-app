@@ -59,3 +59,11 @@ docker exec hafya-app-minio-1 sh -c \
 ## Environment separation (§101)
 
 Development, staging, and production must each point at their own `DATABASE_URL` and `STORAGE_BUCKET` — never share a database across environments, and never point a non-production environment at a bucket/database that could contain real patient data once this goes beyond synthetic demo data.
+
+## Deploying to a host without a persistent shell (Vercel, etc.)
+
+Locally, `prisma migrate dev` and `npm run db:seed` are run by hand against Docker Postgres (see above). A platform like Vercel gives you no shell to run those separately before the app goes live, so `npm run build` ([`package.json`](../package.json)) chains all three: `prisma migrate deploy` (applies any migrations not yet on the target database — safe to run every deploy, a no-op if nothing's pending) `&& tsx prisma/seed.ts` (also safe to re-run — see the idempotency guard in [`prisma/seed.ts`](../prisma/seed.ts)) `&& next build`. This means every deploy needs `DATABASE_URL` (and, for the app itself to run afterward, `AUTH_SECRET` and `NEXT_PUBLIC_APP_URL`) set as real environment variables on the host **before** the build runs, or the build itself fails.
+
+This also means a fresh deploy comes with the same five `@hafya.demo` accounts (password `DemoPass123!`) every local dev environment has — intentional for a demo/portfolio deployment (§73: synthetic data only), but worth removing this seed step from `build` before this app ever holds real patient data.
+
+If your database is a serverless/pooled Postgres (e.g. Neon), prefer its **direct/unpooled** connection string for `DATABASE_URL` here — `prisma migrate deploy` runs DDL, which some connection poolers (PgBouncer-style, including Neon's pooled endpoint) don't handle well. Point the running app at the pooled endpoint separately if you want connection pooling for normal query traffic; `prisma migrate deploy` itself only runs at build time.
